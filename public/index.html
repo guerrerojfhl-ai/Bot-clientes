@@ -263,6 +263,7 @@
     <script>
         let zonas = {};
         let labels = {};
+        let zonaSeleccionadaPorDetectado = {};  // 🔧 Guarda la zona elegida por grupo
 
         function toast(msg, error = false) {
             const t = document.getElementById('toast');
@@ -598,6 +599,14 @@
         function renderDetectados(lista) {
             const cont = document.getElementById('detectados');
 
+            // 🔧 Guardar la selección actual ANTES de re-renderizar
+            document.querySelectorAll('select[id^="zona-"]').forEach(sel => {
+                const jidOriginal = sel.dataset.jid;
+                if (jidOriginal) {
+                    zonaSeleccionadaPorDetectado[jidOriginal] = sel.value;
+                }
+            });
+
             if (!lista || lista.length === 0) {
                 cont.innerHTML = '<div class="vacio">Sin detecciones aún.<br>Manda un "." en un grupo para detectarlo.</div>';
                 return;
@@ -617,6 +626,15 @@
                 const badgeKw = d.yaEnKeywordGroups ? '<span class="badge ok">YA EN KEYWORDS</span>' : '';
 
                 const idLimpio = btoa(d.jid).replace(/=/g, '').replace(/\//g, '_').replace(/\+/g, '-');
+                
+                // 🔧 Recuperar la zona que el usuario había seleccionado
+                const zonaGuardada = zonaSeleccionadaPorDetectado[d.jid];
+
+                // 🔧 Generar opciones marcando como selected la guardada
+                const opcionesConSeleccion = zonasLista.map(z => {
+                    const isSelected = zonaGuardada === z.key ? 'selected' : '';
+                    return `<option value="${z.key}" ${isSelected}>${z.nombre}</option>`;
+                }).join('');
 
                 return `
                     <div class="detectado">
@@ -627,8 +645,8 @@
                             <br>${haceTexto} ${badgeImg}${badgeKw}
                         </div>
 
-                        <select id="zona-${idLimpio}">
-                            ${opcionesZona}
+                        <select id="zona-${idLimpio}" data-jid="${d.jid}" onchange="guardarSeleccionZona('${d.jid}', this.value)">
+                            ${opcionesConSeleccion}
                         </select>
 
                         <div class="acciones">
@@ -651,6 +669,11 @@
                     </div>
                 `;
             }).join('');
+        }
+
+        // 🔧 Nueva función: guarda la selección al cambiar el select
+        function guardarSeleccionZona(jid, zonaKey) {
+            zonaSeleccionadaPorDetectado[jid] = zonaKey;
         }
 
         async function aplicarDetectado(jid, numero, destino, selectId) {
@@ -686,8 +709,15 @@
 
         cargarTodo();
         cargarZonasLista().then(() => cargarDetectados());
+
+        // 🔧 Recargar sin interrumpir al usuario
         setInterval(cargarStatus, 5000);
-        setInterval(cargarDetectados, 3000);
+        setInterval(() => {
+            const haySelectAbierto = document.activeElement?.tagName === 'SELECT';
+            if (!haySelectAbierto) {
+                cargarDetectados();
+            }
+        }, 5000);
     </script>
 
     <!-- Registro del Service Worker -->
