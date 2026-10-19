@@ -1,0 +1,14 @@
+{
+  "algorithm": "sha256",
+  "generatedAt": "2026-10-19T07:16:40.842Z",
+  "files": {
+    "public/sw.js": "1dede7325cd8617f452b769aeff21f4382f748880847a873d7986cecfba10d71",
+    "server.js": "c5b44fd4d83740d7a61e476afcdcda80f19b7dcc31ec2a6754f7e094e6e50aae"
+  },
+  "systemFiles": {
+    "__bolt_integrity.js": "e836d9f83d7c8d44b58cddb9ec566f8bf543abaed4bd7877889a4d926d536700"
+  },
+  "signatureAlgorithm": "hmac-sha256",
+  "signature": "8e6e0106b4260e28efd09d8c5a23c49166a149a1eb6c628b281b6d70e8c1b5f1",
+  "signed": true
+}
