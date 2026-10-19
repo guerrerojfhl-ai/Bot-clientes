@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>BotClientesRepartidores</title>
+
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#22c55e">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="BotClientes">
+    <link rel="apple-touch-icon" href="/icon-192.png">
+    <link rel="icon" type="image/png" href="/icon-192.png">
+
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #0a0a0a;
+            color: #fff;
+            padding: 16px;
+            padding-bottom: 40px;
+        }
+        h1 { font-size: 20px; margin-bottom: 16px; }
+        h2 { font-size: 15px; margin-bottom: 10px; color: #4ade80; }
+        h3 { font-size: 14px; margin-bottom: 8px; color: #60a5fa; }
+        h4 { font-size: 13px; margin-top: 12px; margin-bottom: 6px; color: #888; }
+        .card {
+            background: #161616;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            border: 1px solid #262626;
+        }
+        .card.alert { border-color: #f59e0b; background: #1c1408; }
+        .card.pairing { border-color: #22c55e; background: #0d1f0d; box-shadow: 0 0 20px rgba(34,197,94,0.2); }
+        .card.zona { border-color: #262626; }
+        .card.zona.activa { border-color: #22c55e; background: #0d1f0d; }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            background: #0a0a0a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 14px;
+            margin-bottom: 8px;
+            font-family: inherit;
+        }
+        button {
+            padding: 12px;
+            background: #22c55e;
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        button:active { opacity: 0.8; }
+        button.danger { background: #ef4444; }
+        button.secondary { background: #3b82f6; }
+        button.warning { background: #f59e0b; color: #000; }
+        button.gray { background: #404040; }
+        button.small { padding: 6px 10px; font-size: 12px; width: auto; display: inline-block; margin: 2px; }
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .status.on { background: #22c55e; color: #000; }
+        .status.off { background: #ef4444; }
+        .info { font-size: 12px; color: #888; margin-top: 6px; }
+        .info.warn { color: #f59e0b; font-weight: bold; }
+        .info.ok { color: #22c55e; font-weight: bold; }
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #22c55e;
+            color: #000;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            display: none;
+            z-index: 999;
+            max-width: 90%;
+            text-align: center;
+        }
+        .toast.error { background: #ef4444; color: #fff; }
+        .pairing-code {
+            font-size: 32px;
+            font-weight: bold;
+            text-align: center;
+            letter-spacing: 4px;
+            font-family: ui-monospace, monospace;
+            color: #4ade80;
+            padding: 20px;
+            background: #0a0a0a;
+            border-radius: 8px;
+            margin: 12px 0;
+            user-select: all;
+            cursor: pointer;
+            border: 2px solid #22c55e;
+        }
+        .lista-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            background: #0a0a0a;
+            border-radius: 6px;
+            margin-bottom: 4px;
+            font-size: 12px;
+            font-family: ui-monospace, monospace;
+        }
+        .lista-item span { flex: 1; word-break: break-all; }
+        .lista-item button {
+            width: auto;
+            padding: 4px 8px;
+            font-size: 11px;
+            margin: 0 0 0 8px;
+            background: #ef4444;
+        }
+        .detectado {
+            background: #0a0a0a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+        .detectado .jid {
+            font-family: ui-monospace, monospace;
+            color: #4ade80;
+            font-size: 11px;
+            word-break: break-all;
+            margin-bottom: 4px;
+        }
+        .detectado .meta {
+            color: #888;
+            font-size: 11px;
+            margin-bottom: 6px;
+        }
+        .detectado .acciones {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-top: 4px;
+        }
+        .detectado button {
+            padding: 5px 8px;
+            font-size: 11px;
+            width: auto;
+            margin: 0;
+            border-radius: 6px;
+            font-weight: 600;
+            flex: 1;
+            min-width: 80px;
+        }
+        .detectado select {
+            padding: 5px 8px;
+            font-size: 11px;
+            border-radius: 6px;
+            background: #0a0a0a;
+            color: #fff;
+            border: 1px solid #333;
+            width: 100%;
+            margin-bottom: 6px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            margin-left: 4px;
+        }
+        .badge.ok { background: #22c55e; color: #000; }
+        .vacio {
+            text-align: center;
+            color: #666;
+            padding: 20px;
+            font-size: 13px;
+        }
+
+        /* Ajuste cuando corre como PWA instalada */
+        body.pwa-mode {
+            padding-top: max(16px, env(safe-area-inset-top));
+            padding-bottom: max(40px, env(safe-area-inset-bottom));
+        }
+
+        /* Animación del banner de instalación */
+        @keyframes slideUp {
+            from { transform: translateY(100px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <h1>🤖 BotClientesRepartidores</h1>
+
+    <div class="card">
+        <h2>📊 Estado del Bot</h2>
+        <p>Conexión: <span id="estado-conexion" class="status off">DESCONECTADO</span></p>
+        <p class="info" id="numero-info">Número: --</p>
+        <p class="info" id="licencia-info">Licencia: --</p>
+        <button class="secondary" onclick="cargarTodo()">🔄 Actualizar</button>
+    </div>
+
+    <div class="card pairing" id="pairing-card" style="display:none;">
+        <h2>🔑 Código de Vinculación</h2>
+        <p class="info">Copia el código y mételo en WhatsApp:</p>
+        <div class="pairing-code" id="pairing-code" onclick="copiarPairing()">----</div>
+        <p class="info" style="text-align:center;">👆 Toca para copiar</p>
+        <p class="info" style="text-align:center; color:#f59e0b;">⏱️ Expira en unos minutos</p>
+    </div>
+
+    <div class="card alert">
+        <h2>📞 Configurar Teléfono</h2>
+        <p class="info">Formato: código de país + número (solo dígitos)</p>
+        <p class="info">Ejemplo México: <b>5216691234567</b></p>
+        <input id="phoneInput" placeholder="5216691234567" type="tel">
+        <button class="warning" onclick="guardarTelefono()">💾 Guardar y Reiniciar Bot</button>
+        <button class="secondary" onclick="regenerarPairing()" style="margin-top: 8px;">🔄 Generar Código Nuevo</button>
+    </div>
+
+    <div class="card">
+        <h2>🔑 Licencia</h2>
+        <input id="licenseKey" placeholder="XXXXXXXX-XXXXXXX-XXXXXXXX">
+        <button onclick="validarLicencia()">✅ Validar</button>
+        <p class="info" id="licencia-detalle">--</p>
+    </div>
+
+    <div class="card">
+        <h2>🔥 Prewarm Global</h2>
+        <button class="secondary" onclick="prewarm('global')">🔥 Enviar Prewarm a Todas las Zonas</button>
+    </div>
+
+    <!-- DETECCIONES DE GRUPOS -->
+    <div class="card">
+        <h2>🔍 Grupos Detectados</h2>
+        <p class="info">
+            Manda un mensaje con un punto <b>"."</b> en cualquier grupo donde esté el bot.
+            Aparecerá aquí en segundos para que lo agregues a una zona.
+        </p>
+        <div id="detectados" style="margin-top: 12px;">Cargando...</div>
+        <button class="gray" onclick="limpiarDetectados()" style="margin-top: 8px;">🗑️ Limpiar Lista</button>
+    </div>
+
+    <h2 style="margin-top:20px;">🗺️ Zonas</h2>
+    <div id="zonas-container"></div>
+
+    <div class="toast" id="toast">✅ Listo</div>
+
+    <script>
+        let zonas = {};
+        let labels = {};
+
+        function toast(msg, error = false) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = 'toast' + (error ? ' error' : '');
+            t.style.display = 'block';
+            setTimeout(() => t.style.display = 'none', 2500);
+        }
+
+        async function cargarTodo() {
+            await cargarStatus();
+            await cargarConfig();
+        }
+
+        async function cargarStatus() {
+            try {
+                const r = await fetch('/api/status');
+                const d = await r.json();
+
+                const el = document.getElementById('estado-conexion');
+                el.textContent = d.conectado ? 'CONECTADO' : 'DESCONECTADO';
+                el.className = 'status ' + (d.conectado ? 'on' : 'off');
+
+                document.getElementById('numero-info').textContent = 'Número: ' + (d.numeroConectado || '--');
+
+                const li = d.licencia;
+                const licInfo = document.getElementById('licencia-info');
+                if (li && li.valida) {
+                    licInfo.textContent = '✅ Licencia VÁLIDA';
+                    licInfo.className = 'info ok';
+                } else {
+                    licInfo.textContent = '❌ ' + (li?.razon || 'SIN LICENCIA');
+                    licInfo.className = 'info warn';
+                }
+
+                document.getElementById('licencia-detalle').textContent =
+                    li?.valida ? `Autorizada para: ${d.numeroConectado}` : (li?.razon || '--');
+
+                if (d.pairingCode && !d.conectado) {
+                    document.getElementById('pairing-card').style.display = 'block';
+                    document.getElementById('pairing-code').textContent = d.pairingCode;
+                } else {
+                    document.getElementById('pairing-card').style.display = 'none';
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function cargarConfig() {
+            try {
+                const r = await fetch('/api/config');
+                const d = await r.json();
+                zonas = d.zonas;
+                labels = d.labels || {};
+                renderZonas();
+            } catch (e) { console.error(e); }
+        }
+
+        function etiqueta(id) {
+            return labels[id] || id;
+        }
+
+        function escapeHtml(s) {
+            if (!s) return '';
+            return String(s).replace(/[<>&"']/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c]));
+        }
+
+        function renderZonas() {
+            const cont = document.getElementById('zonas-container');
+            let html = '';
+
+            for (const [key, z] of Object.entries(zonas)) {
+                const activa = z.botActive ? 'activa' : '';
+                const estado = z.botActive ? '🟢 ACTIVA' : '🔴 INACTIVA';
+
+                html += `
+                <div class="card zona ${activa}">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                        <h3 style="margin:0;">${escapeHtml(z.nombre)}</h3>
+                        <span class="status ${z.botActive ? 'on' : 'off'}">${estado}</span>
+                    </div>
+
+                    <button class="${z.botActive ? 'danger' : ''}" onclick="toggleZona('${key}')">
+                        ${z.botActive ? '🔴 Desactivar' : '🟢 Activar'}
+                    </button>
+
+                    <button class="secondary" onclick="prewarm('${key}')">🔥 Prewarm Zona</button>
+
+                    <button class="gray small" onclick="renombrar('${key}')">✏️ Renombrar</button>
+
+                    <h4>📋 Grupos Imágenes (${z.imageGroups.length})</h4>
+                    ${z.imageGroups.map(g => `
+                        <div class="lista-item">
+                            <span>${escapeHtml(etiqueta(g))}</span>
+                            <button onclick="quitar('${key}','image_groups','${escapeHtml(g)}')">🗑️</button>
+                        </div>
+                    `).join('') || '<p class="info">(vacío)</p>'}
+                    <button class="gray small" onclick="agregar('${key}','image_groups')">➕ Añadir Grupo</button>
+
+                    <h4>📱 Números Imágenes (${z.imageNumbers.length})</h4>
+                    ${z.imageNumbers.map(n => `
+                        <div class="lista-item">
+                            <span>${escapeHtml(etiqueta(n))}</span>
+                            <button onclick="quitar('${key}','image_numbers','${escapeHtml(n)}')">🗑️</button>
+                        </div>
+                    `).join('') || '<p class="info">(vacío)</p>'}
+                    <button class="gray small" onclick="agregar('${key}','image_numbers')">➕ Añadir Número</button>
+
+                    <h4>📋 Grupos Keywords (${z.keywordGroups.length})</h4>
+                    ${z.keywordGroups.map(g => `
+                        <div class="lista-item">
+                            <span>${escapeHtml(etiqueta(g))}</span>
+                            <button onclick="quitar('${key}','keyword_groups','${escapeHtml(g)}')">🗑️</button>
+                        </div>
+                    `).join('') || '<p class="info">(vacío)</p>'}
+                    <button class="gray small" onclick="agregar('${key}','keyword_groups')">➕ Añadir Grupo</button>
+
+                    <h4>📱 Números Keywords (${z.keywordNumbers.length})</h4>
+                    ${z.keywordNumbers.map(n => `
+                        <div class="lista-item">
+                            <span>${escapeHtml(etiqueta(n))}</span>
+                            <button onclick="quitar('${key}','keyword_numbers','${escapeHtml(n)}')">🗑️</button>
+                        </div>
+                    `).join('') || '<p class="info">(vacío)</p>'}
+                    <button class="gray small" onclick="agregar('${key}','keyword_numbers')">➕ Añadir Número</button>
+
+                    <h4>🔤 Keywords (${z.keywords.length})</h4>
+                    ${z.keywords.map(k => `
+                        <div class="lista-item">
+                            <span>${escapeHtml(k)}</span>
+                            <button onclick="quitar('${key}','keywords','${escapeHtml(k)}')">🗑️</button>
+                        </div>
+                    `).join('') || '<p class="info">(vacío)</p>'}
+                    <button class="gray small" onclick="agregar('${key}','keywords')">➕ Añadir Keyword</button>
+                </div>
+                `;
+            }
+
+            cont.innerHTML = html;
+        }
+
+        async function toggleZona(zonaKey) {
+            const r = await fetch('/api/zona/toggle', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ zonaKey })
+            });
+            const d = await r.json();
+            if (d.ok) {
+                toast(d.activo ? '🟢 Activada' : '🔴 Desactivada');
+                cargarConfig();
+            }
+        }
+
+        async function renombrar(zonaKey) {
+            const nuevo = prompt('Nuevo nombre para la zona:', zonas[zonaKey].nombre);
+            if (!nuevo || !nuevo.trim()) return;
+            const r = await fetch('/api/zona/renombrar', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ zonaKey, nombre: nuevo.trim() })
+            });
+            const d = await r.json();
+            if (d.ok) {
+                toast('✅ Renombrada');
+                cargarConfig();
+            }
+        }
+
+        async function agregar(zonaKey, tipo) {
+            const esKeyword = tipo === 'keywords';
+            const esNumero = tipo.includes('numbers');
+            const esGrupo = tipo.includes('groups');
+
+            let msg = 'Valor a añadir:';
+            if (esGrupo) msg = 'ID del grupo (ej: 120363...@g.us):';
+            if (esNumero) msg = 'Número (ej: 5216691234567):';
+            if (esKeyword) msg = 'Keyword (ej: solicito):';
+
+            const valor = prompt(msg);
+            if (!valor || !valor.trim()) return;
+
+            let valorLimpio = valor.trim();
+            if (esNumero) valorLimpio = valorLimpio.replace(/\D/g, '');
+            if (esKeyword) valorLimpio = valorLimpio.toLowerCase();
+
+            let label = null;
+            if (!esKeyword) {
+                const l = prompt('Nombre para identificar (opcional):', '');
+                if (l && l.trim()) label = l.trim();
+            }
+
+            const r = await fetch('/api/zona/add', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ zonaKey, tipo, valor: valorLimpio, label })
+            });
+            const d = await r.json();
+            if (d.ok) {
+                toast('✅ Añadido');
+                cargarConfig();
+            } else {
+                toast('❌ ' + (d.error || 'Error'), true);
+            }
+        }
+
+        async function quitar(zonaKey, tipo, valor) {
+            if (!confirm('¿Eliminar este elemento?')) return;
+            const r = await fetch('/api/zona/remove', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ zonaKey, tipo, valor })
+            });
+            const d = await r.json();
+            if (d.ok) {
+                toast('🗑️ Eliminado');
+                cargarConfig();
+            }
+        }
+
+        async function prewarm(zonaKey) {
+            toast('🔥 Enviando prewarm...');
+            const r = await fetch('/api/prewarm', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ zonaKey })
+            });
+            const d = await r.json();
+            if (d.ok || d.total !== undefined) {
+                toast(`🔥 ${d.enviados || 0} ok · ${d.fallidos || 0} fallidos`);
+            } else {
+                toast('❌ ' + (d.error || 'Error'), true);
+            }
+        }
+
+        async function guardarTelefono() {
+            const tel = document.getElementById('phoneInput').value;
+            if (!tel) return;
+
+            const confirmar = confirm(
+                '⚠️ ATENCIÓN\n\n' +
+                'Esto va a:\n' +
+                '1. Guardar el número: ' + tel + '\n' +
+                '2. Cerrar la sesión actual de WhatsApp\n' +
+                '3. Reiniciar el bot\n' +
+                '4. Generar un nuevo código de enlace\n\n' +
+                '¿Continuar?'
+            );
+            if (!confirmar) return;
+
+            toast('🔄 Reiniciando bot...');
+
+            const r = await fetch('/api/phone', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ phoneNumber: tel })
+            });
+            const d = await r.json();
+            if (d.ok) {
+                let intentos = 0;
+                const interval = setInterval(async () => {
+                    await cargarStatus();
+                    intentos++;
+                    if (intentos >= 20) clearInterval(interval);
+                }, 2000);
+            } else {
+                toast('❌ ' + (d.error || 'Error'), true);
+            }
+        }
+
+        async function regenerarPairing() {
+            try {
+                const r = await fetch('/api/regenerar-pairing', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                const d = await r.json();
+                if (d.error) {
+                    toast('❌ ' + d.error, true);
+                    return;
+                }
+                toast('🔄 Código: ' + d.pairingCode);
+                await cargarStatus();
+            } catch (e) {
+                toast('❌ Error', true);
+            }
+        }
+
+        async function validarLicencia() {
+            const key = document.getElementById('licenseKey').value.trim();
+            if (!key) return;
+            const r = await fetch('/api/license/validate', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ key })
+            });
+            const d = await r.json();
+            if (d.valida) {
+                toast('✅ Licencia válida');
+                cargarStatus();
+            } else {
+                toast('❌ ' + (d.razon || 'Error'), true);
+            }
+        }
+
+        function copiarPairing() {
+            const code = document.getElementById('pairing-code').textContent;
+            if (!code || code === '----') return;
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(code).then(() => toast('📋 Copiado: ' + code));
+            }
+        }
+
+        // ==================== DETECCIONES ====================
+        let zonasLista = [];
+
+        async function cargarZonasLista() {
+            try {
+                const r = await fetch('/api/zonas-lista');
+                zonasLista = await r.json();
+            } catch (e) { console.error(e); }
+        }
+
+        async function cargarDetectados() {
+            try {
+                const r = await fetch('/api/detectados');
+                const lista = await r.json();
+                renderDetectados(lista);
+            } catch (e) { console.error(e); }
+        }
+
+        function renderDetectados(lista) {
+            const cont = document.getElementById('detectados');
+
+            if (!lista || lista.length === 0) {
+                cont.innerHTML = '<div class="vacio">Sin detecciones aún.<br>Manda un "." en un grupo para detectarlo.</div>';
+                return;
+            }
+
+            const opcionesZona = zonasLista.map(z => 
+                `<option value="${z.key}">${z.nombre}</option>`
+            ).join('');
+
+            cont.innerHTML = lista.map(d => {
+                const hace = Math.floor((Date.now() - d.ultimaVez) / 1000);
+                const haceTexto = hace < 60 ? `hace ${hace}s` :
+                                  hace < 3600 ? `hace ${Math.floor(hace/60)}min` :
+                                  `hace ${Math.floor(hace/3600)}h`;
+
+                const badgeImg = d.yaEnImageGroups ? '<span class="badge ok">YA EN IMÁGENES</span>' : '';
+                const badgeKw = d.yaEnKeywordGroups ? '<span class="badge ok">YA EN KEYWORDS</span>' : '';
+
+                const idLimpio = btoa(d.jid).replace(/=/g, '').replace(/\//g, '_').replace(/\+/g, '-');
+
+                return `
+                    <div class="detectado">
+                        <div class="jid">${d.jid}</div>
+                        <div class="meta">
+                            ${d.numero ? '👤 ' + d.numero + ' | ' : ''}
+                            📝 "${d.ultimoTexto || ''}"
+                            <br>${haceTexto} ${badgeImg}${badgeKw}
+                        </div>
+
+                        <select id="zona-${idLimpio}">
+                            ${opcionesZona}
+                        </select>
+
+                        <div class="acciones">
+                            <button onclick="aplicarDetectado('${d.jid}', null, 'image_groups', 'zona-${idLimpio}')">
+                                ➕ Imágenes
+                            </button>
+                            <button onclick="aplicarDetectado('${d.jid}', null, 'keyword_groups', 'zona-${idLimpio}')">
+                                ➕ Keywords
+                            </button>
+                        </div>
+                        ${d.numero ? `
+                        <div class="acciones">
+                            <button class="secondary" onclick="aplicarDetectado(null, '${d.numero}', 'image_numbers', 'zona-${idLimpio}')">
+                                ➕ NumImg
+                            </button>
+                            <button class="secondary" onclick="aplicarDetectado(null, '${d.numero}', 'keyword_numbers', 'zona-${idLimpio}')">
+                                ➕ NumKw
+                            </button>
+                        </div>` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function aplicarDetectado(jid, numero, destino, selectId) {
+            const select = document.getElementById(selectId);
+            const zonaKey = select ? select.value : null;
+
+            if (!zonaKey) {
+                toast('❌ Selecciona una zona', true);
+                return;
+            }
+
+            const r = await fetch('/api/detectados/aplicar', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ jid, numero, destino, zonaKey })
+            });
+            const d = await r.json();
+            if (d.ok) {
+                toast('✅ Agregado a ' + destino);
+                await cargarDetectados();
+                await cargarConfig();
+            } else {
+                toast('❌ ' + (d.error || 'Error'), true);
+            }
+        }
+
+        async function limpiarDetectados() {
+            if (!confirm('¿Limpiar toda la lista de detectados?')) return;
+            await fetch('/api/detectados/limpiar', { method: 'POST' });
+            await cargarDetectados();
+            toast('🗑️ Lista limpiada');
+        }
+
+        cargarTodo();
+        cargarZonasLista().then(() => cargarDetectados());
+        setInterval(cargarStatus, 5000);
+        setInterval(cargarDetectados, 3000);
+    </script>
+
+    <!-- Registro del Service Worker -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('✅ SW registrado:', reg.scope))
+                    .catch(err => console.warn('⚠️ SW falló:', err));
+            });
+        }
+
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches
+                          || window.navigator.standalone === true;
+
+        if (isStandalone) {
+            document.body.classList.add('pwa-mode');
+        }
+    </script>
+
+    <!-- Banner de instalación PWA -->
+    <script>
+        let deferredPrompt = null;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            console.log('✅ PWA instalable detectada');
+            e.preventDefault();
+            deferredPrompt = e;
+            mostrarBannerInstalacion();
+        });
+
+        function mostrarBannerInstalacion() {
+            if (window.matchMedia('(display-mode: standalone)').matches) return;
+            if (localStorage.getItem('install-banner-cerrado') === '1') return;
+            if (document.getElementById('install-banner')) return;
+
+            const banner = document.createElement('div');
+            banner.id = 'install-banner';
+            banner.style.cssText = `
+                position: fixed;
+                bottom: 16px;
+                left: 16px;
+                right: 16px;
+                background: linear-gradient(135deg, #22c55e, #16a34a);
+                color: #fff;
+                padding: 14px 16px;
+                border-radius: 12px;
+                font-weight: 600;
+                z-index: 1000;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                box-shadow: 0 8px 24px rgba(34, 197, 94, 0.4);
+                animation: slideUp 0.3s ease;
+            `;
+            banner.innerHTML = `
+                <div style="display:flex;flex-direction:column;gap:2px;">
+                    <span style="font-size:14px;">📲 Instalar BotClientes</span>
+                    <span style="font-size:11px;opacity:0.85;font-weight:400;">Accede más rápido desde tu pantalla</span>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <button onclick="instalarPWA()" style="
+                        background:#000;color:#fff;border:none;padding:10px 18px;
+                        border-radius:8px;font-weight:bold;font-size:13px;
+                        width:auto;margin:0;cursor:pointer;
+                    ">Instalar</button>
+                    <button onclick="cerrarBanner()" style="
+                        background:transparent;color:#fff;border:none;padding:10px;
+                        font-size:16px;width:auto;margin:0;cursor:pointer;opacity:0.7;
+                    ">✕</button>
+                </div>
+            `;
+
+            document.body.appendChild(banner);
+        }
+
+        async function instalarPWA() {
+            if (!deferredPrompt) {
+                toast('No disponible. Usa el menú de Chrome → Instalar', true);
+                return;
+            }
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log('Resultado instalación:', outcome);
+            if (outcome === 'accepted') {
+                toast('✅ Instalada correctamente');
+                document.getElementById('install-banner')?.remove();
+            }
+            deferredPrompt = null;
+        }
+
+        function cerrarBanner() {
+            localStorage.setItem('install-banner-cerrado', '1');
+            document.getElementById('install-banner')?.remove();
+        }
+
+        window.addEventListener('appinstalled', () => {
+            console.log('✅ PWA instalada');
+            document.getElementById('install-banner')?.remove();
+            toast('🎉 App instalada en tu pantalla de inicio');
+        });
+
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            document.getElementById('install-banner')?.remove();
+        }
+    </script>
+</body>
+</html>
