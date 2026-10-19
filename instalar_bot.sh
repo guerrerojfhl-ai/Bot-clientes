@@ -10,12 +10,10 @@ echo "  INSTALANDO BOT CLIENTES REPARTIDORES"
 echo "========================================"
 echo ""
 
-# Configurar allow-external-apps con formato correcto
+# Configurar allow-external-apps (por si acaso, no rompe nada)
 mkdir -p "$HOME/.termux"
 if ! grep -q "^allow-external-apps = true" "$HOME/.termux/termux.properties" 2>/dev/null; then
-    # Borrar líneas mal escritas previas
     sed -i '/^allow-external-apps=/d' "$HOME/.termux/termux.properties" 2>/dev/null || true
-    # Añadir con formato correcto (con espacios)
     echo "allow-external-apps = true" >> "$HOME/.termux/termux.properties"
 fi
 
@@ -93,15 +91,31 @@ cd "$HOME/Bot-clientes"
 export BOT_SECRET="botclientes_repartidores_2026_xK9pLmNq7vRt3wYz8bHj"
 nohup node server.js > bot.log 2>&1 &
 
-sleep 3
+# Esperar a que arranque
+echo ""
+echo "Esperando a que el bot arranque..."
+sleep 5
 
-echo ""
-echo "========================================"
-echo "  ✅ INSTALACIÓN COMPLETA"
-echo "========================================"
-echo ""
-echo "El bot está corriendo en segundo plano."
-echo "Abre la app 'BotClientes' para configurarlo."
-echo ""
-echo "Logs: cat ~/Bot-clientes/bot.log"
-echo ""
+# Verificar que el bot esté respondiendo
+if curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3000/api/status | grep -q "200"; then
+    echo ""
+    echo "========================================"
+    echo "  ✅ INSTALACIÓN COMPLETA"
+    echo "========================================"
+    echo ""
+    echo "El bot está corriendo correctamente."
+    echo ""
+    echo "👉 AHORA REGRESA A LA APP 'Instalador Bot'"
+    echo "   y toca el botón 'Continuar instalación'"
+    echo "   para instalar la app BotClientes."
+    echo ""
+else
+    echo ""
+    echo "⚠️ El bot no responde aún."
+    echo "   Puede tardar unos segundos más."
+    echo "   Revisa el log: cat ~/Bot-clientes/bot.log"
+    echo ""
+    echo "👉 REGRESA A LA APP 'Instalador Bot'"
+    echo "   y toca 'Continuar instalación'."
+    echo ""
+fi
