@@ -10,7 +10,13 @@ echo "========================================"
 echo "  INSTALANDO BOT CLIENTES REPARTIDORES"
 echo "========================================"
 echo ""
-
+# Configurar allow-external-apps si no está activado
+# Configurar allow-external-apps si no está activado
+mkdir -p "$HOME/.termux"
+if ! grep -q "allow-external-apps" "$HOME/.termux/termux.properties" 2>/dev/null; then
+    echo "allow-external-apps=true" >> "$HOME/.termux/termux.properties"
+    termux-reload-settings 2>/dev/null || true
+fi
 # 1. Actualizar paquetes (usar upgrade, NO update)
 # ⚠️ IMPORTANTE: pkg update solo descarga la lista, pkg upgrade actualiza de verdad.
 # Usar solo update deja el sistema en estado inconsistente y rompe Termux.
