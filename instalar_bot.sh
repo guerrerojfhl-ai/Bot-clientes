@@ -76,10 +76,10 @@ echo "OK"
 # 6. Configurar secretos
 echo "[6/8] Configurando secretos..."
 if ! grep -q "BOT_SECRET" "$HOME/.bashrc" 2>/dev/null; then
-    echo 'export BOT_SECRET="botclientes_repartidores_2026_xK9pLmNq7vRt3wYz8bHj"' >> "$HOME/.bashrc"
+    echo 'export BOT_SECRET="botclientes_repartidores_2026_xK9pLmNq7vRt3wYz8bHj botclientes_repartidores_2026_xK9pLmNq7vRt3wYz8bHj"' >> "$HOME/.bashrc"
 fi
 if ! grep -q "BOLT_HASH_SECRET" "$HOME/.bashrc" 2>/dev/null; then
-    echo 'export BOLT_HASH_SECRET="botclientes_repartidores_2026_xK9pLmNq7vRt3wYz8bHj"' >> "$HOME/.bashrc"
+    echo 'export BOLT_HASH_SECRET="botclientes_repartidores_2026_xK9pLmNq7vRt3wYz8bHj botclientes_repartidores_2026_xK9pLmNq7vRt3wYz8bHj"' >> "$HOME/.bashrc"
 fi
 echo "OK"
 
