@@ -2,7 +2,6 @@
 
 # ============================================================
 # Script de instalación automática del BotClientesRepartidores
-# Versión corregida: usa pkg upgrade (no update), muestra errores
 # ============================================================
 
 echo ""
@@ -10,16 +9,17 @@ echo "========================================"
 echo "  INSTALANDO BOT CLIENTES REPARTIDORES"
 echo "========================================"
 echo ""
-# Configurar allow-external-apps si no está activado
-# Configurar allow-external-apps si no está activado
+
+# Configurar allow-external-apps con formato correcto
 mkdir -p "$HOME/.termux"
-if ! grep -q "allow-external-apps" "$HOME/.termux/termux.properties" 2>/dev/null; then
-    echo "allow-external-apps=true" >> "$HOME/.termux/termux.properties"
-    termux-reload-settings 2>/dev/null || true
+if ! grep -q "^allow-external-apps = true" "$HOME/.termux/termux.properties" 2>/dev/null; then
+    # Borrar líneas mal escritas previas
+    sed -i '/^allow-external-apps=/d' "$HOME/.termux/termux.properties" 2>/dev/null || true
+    # Añadir con formato correcto (con espacios)
+    echo "allow-external-apps = true" >> "$HOME/.termux/termux.properties"
 fi
-# 1. Actualizar paquetes (usar upgrade, NO update)
-# ⚠️ IMPORTANTE: pkg update solo descarga la lista, pkg upgrade actualiza de verdad.
-# Usar solo update deja el sistema en estado inconsistente y rompe Termux.
+
+# 1. Actualizar paquetes
 echo "[1/7] Actualizando paquetes..."
 pkg upgrade -y -o Dpkg::Options::="--force-confold"
 if [ $? -ne 0 ]; then
