@@ -121,15 +121,19 @@
             margin-bottom: 4px;
             font-size: 12px;
             font-family: ui-monospace, monospace;
+            gap: 6px;
         }
-        .lista-item span { flex: 1; word-break: break-all; }
+        .lista-item .item-info { flex: 1; word-break: break-all; }
+        .lista-item .item-info b { display: block; font-family: system-ui, sans-serif; font-size: 12px; }
+        .lista-item .item-info small { display: block; opacity: 0.55; font-size: 10px; margin-top: 2px; }
         .lista-item button {
             width: auto;
             padding: 4px 8px;
             font-size: 11px;
-            margin: 0 0 0 8px;
+            margin: 0;
             background: #ef4444;
         }
+        .lista-item button.edit { background: #3b82f6; }
         .detectado {
             background: #0a0a0a;
             border: 1px solid #333;
@@ -145,6 +149,7 @@
             word-break: break-all;
             margin-bottom: 4px;
         }
+        .detectado .jid small { display: block; opacity: 0.5; font-size: 9px; margin-top: 2px; color: #fff; }
         .detectado .meta {
             color: #888;
             font-size: 11px;
@@ -263,7 +268,7 @@
     <script>
         let zonas = {};
         let labels = {};
-        let zonaSeleccionadaPorDetectado = {};  // 🔧 Guarda la zona elegida por grupo
+        let zonaSeleccionadaPorDetectado = {};
 
         function toast(msg, error = false) {
             const t = document.getElementById('toast');
@@ -332,6 +337,22 @@
             return String(s).replace(/[<>&"']/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c]));
         }
 
+        // 🔧 Genera el HTML de un item de lista con alias + valor real + botones
+        function itemLista(valor, zonaKey, tipo) {
+            const alias = etiqueta(valor);
+            const tieneAlias = alias !== valor;
+            return `
+                <div class="lista-item">
+                    <div class="item-info">
+                        ${tieneAlias ? `<b>${escapeHtml(alias)}</b>` : ''}
+                        <small style="${tieneAlias ? '' : 'opacity:0.9; font-size:11px;'}">${escapeHtml(valor)}</small>
+                    </div>
+                    <button class="edit" onclick="relabelGrupo('${zonaKey}','${tipo}','${escapeHtml(valor)}')">✏️</button>
+                    <button onclick="quitar('${zonaKey}','${tipo}','${escapeHtml(valor)}')">🗑️</button>
+                </div>
+            `;
+        }
+
         function renderZonas() {
             const cont = document.getElementById('zonas-container');
             let html = '';
@@ -356,45 +377,27 @@
                     <button class="gray small" onclick="renombrar('${key}')">✏️ Renombrar</button>
 
                     <h4>📋 Grupos Imágenes (${z.imageGroups.length})</h4>
-                    ${z.imageGroups.map(g => `
-                        <div class="lista-item">
-                            <span>${escapeHtml(etiqueta(g))}</span>
-                            <button onclick="quitar('${key}','image_groups','${escapeHtml(g)}')">🗑️</button>
-                        </div>
-                    `).join('') || '<p class="info">(vacío)</p>'}
+                    ${z.imageGroups.map(g => itemLista(g, key, 'image_groups')).join('') || '<p class="info">(vacío)</p>'}
                     <button class="gray small" onclick="agregar('${key}','image_groups')">➕ Añadir Grupo</button>
 
                     <h4>📱 Números Imágenes (${z.imageNumbers.length})</h4>
-                    ${z.imageNumbers.map(n => `
-                        <div class="lista-item">
-                            <span>${escapeHtml(etiqueta(n))}</span>
-                            <button onclick="quitar('${key}','image_numbers','${escapeHtml(n)}')">🗑️</button>
-                        </div>
-                    `).join('') || '<p class="info">(vacío)</p>'}
+                    ${z.imageNumbers.map(n => itemLista(n, key, 'image_numbers')).join('') || '<p class="info">(vacío)</p>'}
                     <button class="gray small" onclick="agregar('${key}','image_numbers')">➕ Añadir Número</button>
 
                     <h4>📋 Grupos Keywords (${z.keywordGroups.length})</h4>
-                    ${z.keywordGroups.map(g => `
-                        <div class="lista-item">
-                            <span>${escapeHtml(etiqueta(g))}</span>
-                            <button onclick="quitar('${key}','keyword_groups','${escapeHtml(g)}')">🗑️</button>
-                        </div>
-                    `).join('') || '<p class="info">(vacío)</p>'}
+                    ${z.keywordGroups.map(g => itemLista(g, key, 'keyword_groups')).join('') || '<p class="info">(vacío)</p>'}
                     <button class="gray small" onclick="agregar('${key}','keyword_groups')">➕ Añadir Grupo</button>
 
                     <h4>📱 Números Keywords (${z.keywordNumbers.length})</h4>
-                    ${z.keywordNumbers.map(n => `
-                        <div class="lista-item">
-                            <span>${escapeHtml(etiqueta(n))}</span>
-                            <button onclick="quitar('${key}','keyword_numbers','${escapeHtml(n)}')">🗑️</button>
-                        </div>
-                    `).join('') || '<p class="info">(vacío)</p>'}
+                    ${z.keywordNumbers.map(n => itemLista(n, key, 'keyword_numbers')).join('') || '<p class="info">(vacío)</p>'}
                     <button class="gray small" onclick="agregar('${key}','keyword_numbers')">➕ Añadir Número</button>
 
                     <h4>🔤 Keywords (${z.keywords.length})</h4>
                     ${z.keywords.map(k => `
                         <div class="lista-item">
-                            <span>${escapeHtml(k)}</span>
+                            <div class="item-info">
+                                <small style="opacity:0.9; font-size:11px;">${escapeHtml(k)}</small>
+                            </div>
                             <button onclick="quitar('${key}','keywords','${escapeHtml(k)}')">🗑️</button>
                         </div>
                     `).join('') || '<p class="info">(vacío)</p>'}
@@ -434,6 +437,40 @@
             }
         }
 
+        // 🔧 Renombrar alias de un grupo o número
+        // Usa /api/zona/add para actualizar el label (el backend sobreescribe si ya existe)
+        async function relabelGrupo(zonaKey, tipo, valor) {
+            const actual = labels[valor] || '';
+            const nuevo = prompt(
+                `Alias para:\n${valor}\n\n(Deja vacío para quitar el alias)`,
+                actual
+            );
+            if (nuevo === null) return; // canceló
+
+            const r = await fetch('/api/zona/add', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    zonaKey,
+                    tipo,
+                    valor,
+                    label: nuevo.trim() || null
+                })
+            });
+            const d = await r.json();
+            if (d.ok) {
+                if (nuevo.trim()) {
+                    labels[valor] = nuevo.trim();
+                } else {
+                    delete labels[valor];
+                }
+                toast('✅ Alias actualizado');
+                cargarConfig();
+            } else {
+                toast('❌ ' + (d.error || 'Error'), true);
+            }
+        }
+
         async function agregar(zonaKey, tipo) {
             const esKeyword = tipo === 'keywords';
             const esNumero = tipo.includes('numbers');
@@ -453,7 +490,7 @@
 
             let label = null;
             if (!esKeyword) {
-                const l = prompt('Nombre para identificar (opcional):', '');
+                const l = prompt('Alias para identificar (opcional):', '');
                 if (l && l.trim()) label = l.trim();
             }
 
@@ -599,7 +636,7 @@
         function renderDetectados(lista) {
             const cont = document.getElementById('detectados');
 
-            // 🔧 Guardar la selección actual ANTES de re-renderizar
+            // Guardar la selección actual ANTES de re-renderizar
             document.querySelectorAll('select[id^="zona-"]').forEach(sel => {
                 const jidOriginal = sel.dataset.jid;
                 if (jidOriginal) {
@@ -612,10 +649,6 @@
                 return;
             }
 
-            const opcionesZona = zonasLista.map(z => 
-                `<option value="${z.key}">${z.nombre}</option>`
-            ).join('');
-
             cont.innerHTML = lista.map(d => {
                 const hace = Math.floor((Date.now() - d.ultimaVez) / 1000);
                 const haceTexto = hace < 60 ? `hace ${hace}s` :
@@ -627,21 +660,28 @@
 
                 const idLimpio = btoa(d.jid).replace(/=/g, '').replace(/\//g, '_').replace(/\+/g, '-');
                 
-                // 🔧 Recuperar la zona que el usuario había seleccionado
                 const zonaGuardada = zonaSeleccionadaPorDetectado[d.jid];
 
-                // 🔧 Generar opciones marcando como selected la guardada
                 const opcionesConSeleccion = zonasLista.map(z => {
                     const isSelected = zonaGuardada === z.key ? 'selected' : '';
                     return `<option value="${z.key}" ${isSelected}>${z.nombre}</option>`;
                 }).join('');
 
+                const aliasJid = etiqueta(d.jid);
+                const tieneAliasJid = aliasJid !== d.jid;
+
+                const aliasNum = d.numero ? etiqueta(d.numero) : null;
+                const tieneAliasNum = aliasNum && aliasNum !== d.numero;
+
                 return `
                     <div class="detectado">
-                        <div class="jid">${d.jid}</div>
+                        <div class="jid">
+                            ${tieneAliasJid ? `<b style="color:#22c55e;">${escapeHtml(aliasJid)}</b>` : escapeHtml(d.jid)}
+                            ${tieneAliasJid ? `<small>${escapeHtml(d.jid)}</small>` : ''}
+                        </div>
                         <div class="meta">
-                            ${d.numero ? '👤 ' + d.numero + ' | ' : ''}
-                            📝 "${d.ultimoTexto || ''}"
+                            ${d.numero ? '👤 ' + escapeHtml(tieneAliasNum ? aliasNum : d.numero) + (tieneAliasNum ? ` <small style="opacity:0.5;">(${d.numero})</small>` : '') + ' | ' : ''}
+                            📝 "${escapeHtml(d.ultimoTexto || '')}"
                             <br>${haceTexto} ${badgeImg}${badgeKw}
                         </div>
 
@@ -671,7 +711,6 @@
             }).join('');
         }
 
-        // 🔧 Nueva función: guarda la selección al cambiar el select
         function guardarSeleccionZona(jid, zonaKey) {
             zonaSeleccionadaPorDetectado[jid] = zonaKey;
         }
@@ -710,7 +749,6 @@
         cargarTodo();
         cargarZonasLista().then(() => cargarDetectados());
 
-        // 🔧 Recargar sin interrumpir al usuario
         setInterval(cargarStatus, 5000);
         setInterval(() => {
             const haySelectAbierto = document.activeElement?.tagName === 'SELECT';
