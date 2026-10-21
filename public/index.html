@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>BotClientesRepartidores</title>
 
-    <!-- PWA -->
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#22c55e">
     <meta name="mobile-web-app-capable" content="yes">
@@ -39,7 +38,7 @@
         .card.pairing { border-color: #22c55e; background: #0d1f0d; box-shadow: 0 0 20px rgba(34,197,94,0.2); }
         .card.zona { border-color: #262626; }
         .card.zona.activa { border-color: #22c55e; background: #0d1f0d; }
-        input, textarea {
+        input, textarea, select {
             width: 100%;
             padding: 10px;
             background: #0a0a0a;
@@ -134,6 +133,7 @@
             background: #ef4444;
         }
         .lista-item button.edit { background: #3b82f6; }
+        .lista-item button.copy { background: #8b5cf6; }
         .detectado {
             background: #0a0a0a;
             border: 1px solid #333;
@@ -150,6 +150,13 @@
             margin-bottom: 4px;
         }
         .detectado .jid small { display: block; opacity: 0.5; font-size: 9px; margin-top: 2px; color: #fff; }
+        .detectado .nombre-grupo {
+            font-family: system-ui, sans-serif;
+            color: #60a5fa;
+            font-size: 13px;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
         .detectado .meta {
             color: #888;
             font-size: 11px;
@@ -196,19 +203,42 @@
             font-size: 13px;
         }
 
-        /* Ajuste cuando corre como PWA instalada */
+        /* Modal para copiar entre zonas */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.85);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: #161616;
+            border-radius: 12px;
+            padding: 20px;
+            max-width: 500px;
+            width: 100%;
+            border: 1px solid #333;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal h3 { margin-bottom: 12px; color: #4ade80; }
+        .modal label { display: block; font-size: 12px; color: #888; margin-bottom: 4px; margin-top: 12px; }
+        .modal .modal-actions { display: flex; gap: 8px; margin-top: 16px; }
+        .modal .modal-actions button { flex: 1; }
+
         body.pwa-mode {
             padding-top: max(16px, env(safe-area-inset-top));
             padding-bottom: max(40px, env(safe-area-inset-bottom));
         }
 
-        /* Animación del banner de instalación */
         @keyframes slideUp {
             from { transform: translateY(100px); opacity: 0; }
             to { transform: translateY(0); opacity: 1; }
         }
-
-        /* Animación del aviso de bot caído */
         @keyframes slideDown {
             from { transform: translateY(-100px); opacity: 0; }
             to { transform: translateY(0); opacity: 1; }
@@ -260,7 +290,7 @@
         <h2>🔍 Grupos Detectados</h2>
         <p class="info">
             Manda un mensaje con un punto <b>"."</b> en cualquier grupo donde esté el bot.
-            Aparecerá aquí en segundos para que lo agregues a una zona.
+            Aparecerá aquí con su nombre para que lo agregues a una zona.
         </p>
         <div id="detectados" style="margin-top: 12px;">Cargando...</div>
         <button class="gray" onclick="limpiarDetectados()" style="margin-top: 8px;">🗑️ Limpiar Lista</button>
@@ -269,20 +299,42 @@
     <h2 style="margin-top:20px;">🗺️ Zonas</h2>
     <div id="zonas-container"></div>
 
+    <!-- Modal para copiar entre zonas -->
+    <div class="modal-overlay" id="modal-copiar">
+        <div class="modal">
+            <h3>📋 Copiar a otra zona</h3>
+            <p class="info" id="modal-copiar-valor" style="word-break:break-all;"></p>
+
+            <label>Zona destino:</label>
+            <select id="modal-copiar-zona"></select>
+
+            <label>Tipo de ranura:</label>
+            <select id="modal-copiar-tipo">
+                <option value="image_groups">📋 Grupos Imágenes</option>
+                <option value="image_numbers">📱 Números Imágenes</option>
+                <option value="keyword_groups">📋 Grupos Keywords</option>
+                <option value="keyword_numbers">📱 Números Keywords</option>
+            </select>
+
+            <div class="modal-actions">
+                <button class="gray" onclick="cerrarModalCopiar()">Cancelar</button>
+                <button onclick="confirmarCopiar()">Copiar</button>
+            </div>
+        </div>
+    </div>
+
     <div class="toast" id="toast">✅ Listo</div>
 
     <script>
         let zonas = {};
         let labels = {};
         let zonaSeleccionadaPorDetectado = {};
+        let modalCopiarValor = null;
 
         // Variables para detectar bot caído
         let fallosConsecutivos = 0;
         const MAX_FALLOS_ANTES_DE_AVISO = 3;
         let avisoBotActivo = false;
-
-        // 🔧 Refresco automático de zonas cada 5 segundos
-        let ultimoEstadoZonas = null;
 
         function toast(msg, error = false) {
             const t = document.getElementById('toast');
@@ -304,9 +356,7 @@
                 const d = await r.json();
 
                 fallosConsecutivos = 0;
-                if (avisoBotActivo) {
-                    ocultarAvisoBot();
-                }
+                if (avisoBotActivo) ocultarAvisoBot();
 
                 const el = document.getElementById('estado-conexion');
                 el.textContent = d.conectado ? 'CONECTADO' : 'DESCONECTADO';
@@ -354,18 +404,11 @@
             aviso.id = 'aviso-bot';
             aviso.style.cssText = `
                 position: fixed;
-                top: 16px;
-                left: 16px;
-                right: 16px;
+                top: 16px; left: 16px; right: 16px;
                 background: linear-gradient(135deg, #ef4444, #dc2626);
-                color: #fff;
-                padding: 14px 16px;
-                border-radius: 12px;
-                font-weight: 600;
-                z-index: 2000;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
+                color: #fff; padding: 14px 16px; border-radius: 12px;
+                font-weight: 600; z-index: 2000;
+                display: flex; justify-content: space-between; align-items: center;
                 box-shadow: 0 8px 24px rgba(239, 68, 68, 0.5);
                 animation: slideDown 0.3s ease;
             `;
@@ -393,27 +436,9 @@
             try {
                 const r = await fetch('/api/config');
                 const d = await r.json();
-
-                // 🔧 Detectar si el estado de las zonas cambió (para refrescar automáticamente)
-                const nuevoEstado = JSON.stringify({
-                    zonas: d.zonas,
-                    labels: d.labels
-                });
-
-                const cambio = ultimoEstadoZonas !== null && ultimoEstadoZonas !== nuevoEstado;
-                ultimoEstadoZonas = nuevoEstado;
-
                 zonas = d.zonas;
                 labels = d.labels || {};
                 renderZonas();
-
-                // Si cambió algo (por ejemplo, una zona se desactivó tras responder "Y"),
-                // mostramos un pequeño toast informativo
-                if (cambio) {
-                    const zonasActivas = Object.values(zonas).filter(z => z.botActive).length;
-                    // Solo mostramos el toast si el número de zonas activas cambió
-                    // (esto detecta el "se desactivó automáticamente")
-                }
             } catch (e) { console.error(e); }
         }
 
@@ -435,7 +460,8 @@
                         ${tieneAlias ? `<b>${escapeHtml(alias)}</b>` : ''}
                         <small style="${tieneAlias ? '' : 'opacity:0.9; font-size:11px;'}">${escapeHtml(valor)}</small>
                     </div>
-                    <button class="edit" onclick="relabelGrupo('${zonaKey}','${tipo}','${escapeHtml(valor)}')">✏️</button>
+                    <button class="copy" onclick="abrirModalCopiar('${escapeHtml(valor)}')">📋</button>
+                    <button class="edit" onclick="relabel('${escapeHtml(valor)}')">✏️</button>
                     <button onclick="quitar('${zonaKey}','${tipo}','${escapeHtml(valor)}')">🗑️</button>
                 </div>
             `;
@@ -506,7 +532,7 @@
             const d = await r.json();
             if (d.ok) {
                 toast(d.activo ? '🟢 Activada' : '🔴 Desactivada');
-                await cargarConfig();
+                cargarConfig();
             }
         }
 
@@ -521,11 +547,11 @@
             const d = await r.json();
             if (d.ok) {
                 toast('✅ Renombrada');
-                await cargarConfig();
+                cargarConfig();
             }
         }
 
-        async function relabelGrupo(zonaKey, tipo, valor) {
+        async function relabel(valor) {
             const actual = labels[valor] || '';
             const nuevo = prompt(
                 `Alias para:\n${valor}\n\n(Deja vacío para quitar el alias)`,
@@ -533,25 +559,17 @@
             );
             if (nuevo === null) return;
 
-            const r = await fetch('/api/zona/add', {
+            const r = await fetch('/api/zona/relabel', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    zonaKey,
-                    tipo,
-                    valor,
-                    label: nuevo.trim() || null
-                })
+                body: JSON.stringify({ valor, label: nuevo.trim() || null })
             });
             const d = await r.json();
             if (d.ok) {
-                if (nuevo.trim()) {
-                    labels[valor] = nuevo.trim();
-                } else {
-                    delete labels[valor];
-                }
+                if (nuevo.trim()) labels[valor] = nuevo.trim();
+                else delete labels[valor];
                 toast('✅ Alias actualizado');
-                await cargarConfig();
+                cargarConfig();
             } else {
                 toast('❌ ' + (d.error || 'Error'), true);
             }
@@ -588,7 +606,7 @@
             const d = await r.json();
             if (d.ok) {
                 toast('✅ Añadido');
-                await cargarConfig();
+                cargarConfig();
             } else {
                 toast('❌ ' + (d.error || 'Error'), true);
             }
@@ -604,7 +622,7 @@
             const d = await r.json();
             if (d.ok) {
                 toast('🗑️ Eliminado');
-                await cargarConfig();
+                cargarConfig();
             }
         }
 
@@ -619,13 +637,55 @@
                 const d = await r.json();
                 if (d.ok || d.total !== undefined) {
                     toast(`🔥 ${d.enviados || 0} ok · ${d.fallidos || 0} fallidos`);
-                    // 🔧 Recargar config después del prewarm (por si cambió el estado)
-                    await cargarConfig();
                 } else {
                     toast('❌ ' + (d.error || 'Error'), true);
                 }
             } catch (e) {
                 toast('❌ El bot no responde. Reinicia Termux.', true);
+            }
+        }
+
+        // ==================== MODAL COPIAR ====================
+        function abrirModalCopiar(valor) {
+            modalCopiarValor = valor;
+            document.getElementById('modal-copiar-valor').textContent = valor;
+            
+            const selectZona = document.getElementById('modal-copiar-zona');
+            selectZona.innerHTML = Object.entries(zonas).map(([key, z]) => 
+                `<option value="${key}">${escapeHtml(z.nombre)}</option>`
+            ).join('');
+            
+            document.getElementById('modal-copiar').classList.add('active');
+        }
+
+        function cerrarModalCopiar() {
+            document.getElementById('modal-copiar').classList.remove('active');
+            modalCopiarValor = null;
+        }
+
+        async function confirmarCopiar() {
+            if (!modalCopiarValor) return;
+            
+            const destinoKey = document.getElementById('modal-copiar-zona').value;
+            const tipo = document.getElementById('modal-copiar-tipo').value;
+            
+            const r = await fetch('/api/zona/copiar', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    origenKey: null,
+                    destinoKey,
+                    tipo,
+                    valor: modalCopiarValor
+                })
+            });
+            const d = await r.json();
+            if (d.ok) {
+                toast('✅ Copiado a ' + zonas[destinoKey].nombre);
+                cerrarModalCopiar();
+                cargarConfig();
+            } else {
+                toast('❌ ' + (d.error || 'Error'), true);
             }
         }
 
@@ -750,7 +810,7 @@
                 const badgeKw = d.yaEnKeywordGroups ? '<span class="badge ok">YA EN KEYWORDS</span>' : '';
 
                 const idLimpio = btoa(d.jid).replace(/=/g, '').replace(/\//g, '_').replace(/\+/g, '-');
-
+                
                 const zonaGuardada = zonaSeleccionadaPorDetectado[d.jid];
 
                 const opcionesConSeleccion = zonasLista.map(z => {
@@ -764,11 +824,14 @@
                 const aliasNum = d.numero ? etiqueta(d.numero) : null;
                 const tieneAliasNum = aliasNum && aliasNum !== d.numero;
 
+                const nombreGrupo = d.nombreGrupo || (tieneAliasJid ? aliasJid : null);
+
                 return `
                     <div class="detectado">
+                        ${nombreGrupo ? `<div class="nombre-grupo">📛 ${escapeHtml(nombreGrupo)}</div>` : ''}
                         <div class="jid">
-                            ${tieneAliasJid ? `<b style="color:#22c55e;">${escapeHtml(aliasJid)}</b>` : escapeHtml(d.jid)}
-                            ${tieneAliasJid ? `<small>${escapeHtml(d.jid)}</small>` : ''}
+                            ${escapeHtml(d.jid)}
+                            ${tieneAliasJid ? `<small>alias: ${escapeHtml(aliasJid)}</small>` : ''}
                         </div>
                         <div class="meta">
                             ${d.numero ? '👤 ' + escapeHtml(tieneAliasNum ? aliasNum : d.numero) + (tieneAliasNum ? ` <small style="opacity:0.5;">(${d.numero})</small>` : '') + ' | ' : ''}
@@ -787,6 +850,7 @@
                             <button onclick="aplicarDetectado('${d.jid}', null, 'keyword_groups', 'zona-${idLimpio}')">
                                 ➕ Keywords
                             </button>
+                            <button class="secondary" onclick="relabel('${d.jid}')" style="flex: 0 0 auto; min-width: 40px;">✏️</button>
                         </div>
                         ${d.numero ? `
                         <div class="acciones">
@@ -840,14 +904,11 @@
         cargarTodo();
         cargarZonasLista().then(() => cargarDetectados());
 
-        // 🔧 Refresco automático
         setInterval(cargarStatus, 5000);
-        setInterval(async () => {
+        setInterval(() => {
             const haySelectAbierto = document.activeElement?.tagName === 'SELECT';
             if (!haySelectAbierto) {
-                await cargarDetectados();
-                // 🔧 Refrescar zonas cada 5 segundos para detectar desactivación automática
-                await cargarConfig();
+                cargarDetectados();
             }
         }, 5000);
     </script>
