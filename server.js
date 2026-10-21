@@ -642,8 +642,8 @@ app.post('/api/zona/copiar', (req, res) => {
     }
     
     const d = cargarDinamico();
-    if (!d.zonas[origenKey] || !d.zonas[destinoKey]) {
-        return res.status(400).json({ error: 'Zona no existe' });
+    if (!d.zonas[destinoKey]) {
+        return res.status(400).json({ error: 'Zona destino no existe' });
     }
     
     const keyExtra = `${tipo}_extra`;
