@@ -22,6 +22,7 @@
             color: #fff;
             padding: 16px;
             padding-bottom: 40px;
+            transition: background 0.3s, color 0.3s;
         }
         h1 { font-size: 20px; margin-bottom: 16px; }
         h2 { font-size: 15px; margin-bottom: 10px; color: #4ade80; }
@@ -33,6 +34,7 @@
             padding: 16px;
             margin-bottom: 12px;
             border: 1px solid #262626;
+            transition: background 0.3s, border-color 0.3s;
         }
         .card.alert { border-color: #f59e0b; background: #1c1408; }
         .card.pairing { border-color: #22c55e; background: #0d1f0d; box-shadow: 0 0 20px rgba(34,197,94,0.2); }
@@ -48,6 +50,7 @@
             font-size: 14px;
             margin-bottom: 8px;
             font-family: inherit;
+            transition: background 0.3s, color 0.3s, border-color 0.3s;
         }
         button {
             padding: 12px;
@@ -203,7 +206,7 @@
             font-size: 13px;
         }
 
-        /* Modal para copiar entre zonas */
+        /* Modal */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -230,6 +233,103 @@
         .modal .modal-actions { display: flex; gap: 8px; margin-top: 16px; }
         .modal .modal-actions button { flex: 1; }
 
+        /* 🔧 Dashboard de estadísticas */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .stat-box {
+            background: #0a0a0a;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid #333;
+        }
+        .stat-box .num {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4ade80;
+        }
+        .stat-box .label {
+            font-size: 11px;
+            color: #888;
+            margin-top: 4px;
+        }
+
+        /* 🔧 Buscador */
+        .buscador-container {
+            margin-bottom: 12px;
+        }
+        .buscador-container input {
+            background: #161616;
+            border: 1px solid #22c55e;
+            font-size: 14px;
+            padding: 12px;
+        }
+
+        /* 🔧 Tema claro */
+        body.light {
+            background: #f5f5f5;
+            color: #111;
+        }
+        body.light .card {
+            background: #fff;
+            border-color: #ddd;
+        }
+        body.light .card.zona.activa {
+            background: #dcfce7;
+            border-color: #22c55e;
+        }
+        body.light h1, body.light h2, body.light h3, body.light h4 { color: #111; }
+        body.light h2 { color: #16a34a; }
+        body.light h3 { color: #2563eb; }
+        body.light h4 { color: #666; }
+        body.light input, body.light textarea, body.light select {
+            background: #f9f9f9;
+            color: #111;
+            border-color: #ccc;
+        }
+        body.light .lista-item, body.light .detectado, body.light .stat-box, body.light .pairing-code {
+            background: #f9f9f9;
+            border-color: #ddd;
+        }
+        body.light .info { color: #666; }
+        body.light .vacio { color: #999; }
+
+        /* 🔧 Toggle de tema */
+        .theme-toggle {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: #22c55e;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            z-index: 500;
+            padding: 0;
+            margin: 0;
+            box-shadow: 0 4px 12px rgba(34,197,94,0.4);
+        }
+        .theme-toggle:active { transform: scale(0.95); }
+
+        /* 🔧 Historial de respuestas */
+        .historial-item {
+            padding: 8px;
+            background: #0a0a0a;
+            border-radius: 6px;
+            margin-bottom: 4px;
+            font-size: 11px;
+            border-left: 3px solid #22c55e;
+        }
+        .historial-item .tiempo { color: #888; font-size: 10px; }
+        .historial-item .zona { color: #60a5fa; font-weight: bold; }
+        body.light .historial-item { background: #f9f9f9; }
+
         body.pwa-mode {
             padding-top: max(16px, env(safe-area-inset-top));
             padding-bottom: max(40px, env(safe-area-inset-bottom));
@@ -246,7 +346,33 @@
     </style>
 </head>
 <body>
+    <!-- 🔧 Toggle de tema -->
+    <button class="theme-toggle" onclick="toggleTema()" id="theme-toggle" title="Cambiar tema">🌙</button>
+
     <h1>🤖 BotClientesRepartidores</h1>
+
+    <!-- 🔧 DASHBOARD DE ESTADÍSTICAS -->
+    <div class="card">
+        <h2>📊 Resumen</h2>
+        <div class="stats-grid">
+            <div class="stat-box">
+                <div class="num" id="stat-grupos">0</div>
+                <div class="label">Grupos</div>
+            </div>
+            <div class="stat-box">
+                <div class="num" id="stat-numeros">0</div>
+                <div class="label">Números</div>
+            </div>
+            <div class="stat-box">
+                <div class="num" id="stat-keywords">0</div>
+                <div class="label">Keywords</div>
+            </div>
+            <div class="stat-box">
+                <div class="num" id="stat-activas">0</div>
+                <div class="label">Zonas activas</div>
+            </div>
+        </div>
+    </div>
 
     <div class="card">
         <h2>📊 Estado del Bot</h2>
@@ -285,6 +411,13 @@
         <button class="secondary" onclick="prewarm('global')">🔥 Enviar Prewarm a Todas las Zonas</button>
     </div>
 
+    <!-- 🔧 HISTORIAL DE RESPUESTAS -->
+    <div class="card">
+        <h2>📈 Últimas respuestas</h2>
+        <p class="info">Cuando el bot responde "Y", aparece aquí.</p>
+        <div id="historial" style="margin-top: 12px; max-height: 300px; overflow-y: auto;">Cargando...</div>
+    </div>
+
     <!-- DETECCIONES DE GRUPOS -->
     <div class="card">
         <h2>🔍 Grupos Detectados</h2>
@@ -294,6 +427,11 @@
         </p>
         <div id="detectados" style="margin-top: 12px;">Cargando...</div>
         <button class="gray" onclick="limpiarDetectados()" style="margin-top: 8px;">🗑️ Limpiar Lista</button>
+    </div>
+
+    <!-- 🔧 BUSCADOR -->
+    <div class="buscador-container">
+        <input id="buscar" placeholder="🔍 Buscar grupo, número o keyword..." oninput="filtrarZonas()">
     </div>
 
     <h2 style="margin-top:20px;">🗺️ Zonas</h2>
@@ -331,10 +469,28 @@
         let zonaSeleccionadaPorDetectado = {};
         let modalCopiarValor = null;
 
+        // 🔧 Historial de respuestas
+        let ultimoHistorialId = 0;
+        let historialNotificado = new Set();
+
         // Variables para detectar bot caído
         let fallosConsecutivos = 0;
         const MAX_FALLOS_ANTES_DE_AVISO = 3;
         let avisoBotActivo = false;
+
+        // 🔧 Tema
+        function toggleTema() {
+            document.body.classList.toggle('light');
+            const esClaro = document.body.classList.contains('light');
+            document.getElementById('theme-toggle').textContent = esClaro ? '☀️' : '🌙';
+            localStorage.setItem('tema', esClaro ? 'light' : 'dark');
+        }
+
+        // Cargar tema guardado
+        if (localStorage.getItem('tema') === 'light') {
+            document.body.classList.add('light');
+            document.getElementById('theme-toggle').textContent = '☀️';
+        }
 
         function toast(msg, error = false) {
             const t = document.getElementById('toast');
@@ -347,6 +503,7 @@
         async function cargarTodo() {
             await cargarStatus();
             await cargarConfig();
+            await cargarHistorial();
         }
 
         async function cargarStatus() {
@@ -404,7 +561,7 @@
             aviso.id = 'aviso-bot';
             aviso.style.cssText = `
                 position: fixed;
-                top: 16px; left: 16px; right: 16px;
+                top: 16px; left: 16px; right: 80px;
                 background: linear-gradient(135deg, #ef4444, #dc2626);
                 color: #fff; padding: 14px 16px; border-radius: 12px;
                 font-weight: 600; z-index: 2000;
@@ -439,7 +596,36 @@
                 zonas = d.zonas;
                 labels = d.labels || {};
                 renderZonas();
+                actualizarStats();  // 🔧 Actualizar dashboard
             } catch (e) { console.error(e); }
+        }
+
+        // 🔧 Actualizar estadísticas
+        function actualizarStats() {
+            let grupos = 0, numeros = 0, keywords = 0, activas = 0;
+            for (const z of Object.values(zonas)) {
+                grupos += z.imageGroups.length + z.keywordGroups.length;
+                numeros += z.imageNumbers.length + z.keywordNumbers.length;
+                keywords += z.keywords.length;
+                if (z.botActive) activas++;
+            }
+            document.getElementById('stat-grupos').textContent = grupos;
+            document.getElementById('stat-numeros').textContent = numeros;
+            document.getElementById('stat-keywords').textContent = keywords;
+            document.getElementById('stat-activas').textContent = activas;
+        }
+
+        // 🔧 Filtrar zonas por búsqueda
+        function filtrarZonas() {
+            const q = document.getElementById('buscar').value.toLowerCase().trim();
+            document.querySelectorAll('.lista-item').forEach(item => {
+                if (!q) {
+                    item.style.display = '';
+                    return;
+                }
+                const texto = item.textContent.toLowerCase();
+                item.style.display = texto.includes(q) ? '' : 'none';
+            });
         }
 
         function etiqueta(id) {
@@ -521,6 +707,7 @@
             }
 
             cont.innerHTML = html;
+            filtrarZonas();  // 🔧 Reaplicar filtro si hay búsqueda activa
         }
 
         async function toggleZona(zonaKey) {
@@ -612,8 +799,11 @@
             }
         }
 
+        // 🔧 Confirmación doble antes de borrar
         async function quitar(zonaKey, tipo, valor) {
-            if (!confirm('¿Eliminar este elemento?')) return;
+            if (!confirm('¿Eliminar este elemento?\n\n' + valor)) return;
+            if (!confirm('⚠️ ÚLTIMA CONFIRMACIÓN\n\n¿Seguro que quieres eliminar:\n' + valor)) return;
+            
             const r = await fetch('/api/zona/remove', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -673,7 +863,6 @@
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
-                    origenKey: null,
                     destinoKey,
                     tipo,
                     valor: modalCopiarValor
@@ -765,6 +954,52 @@
             if (navigator.clipboard) {
                 navigator.clipboard.writeText(code).then(() => toast('📋 Copiado: ' + code));
             }
+        }
+
+        // ==================== HISTORIAL ====================
+        async function cargarHistorial() {
+            try {
+                const r = await fetch('/api/historial');
+                if (!r.ok) return;
+                const lista = await r.json();
+                renderHistorial(lista);
+                
+                // 🔧 Notificar nuevas respuestas
+                for (const h of lista) {
+                    if (h.id > ultimoHistorialId && !historialNotificado.has(h.id)) {
+                        if (ultimoHistorialId > 0) {
+                            // Es una respuesta nueva
+                            const numCorto = h.numero ? h.numero.slice(-4) : '????';
+                            toast(`✅ Bot respondió en ${h.zonaNombre} (…${numCorto})`);
+                        }
+                        historialNotificado.add(h.id);
+                        if (h.id > ultimoHistorialId) ultimoHistorialId = h.id;
+                    }
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        function renderHistorial(lista) {
+            const cont = document.getElementById('historial');
+            if (!lista || lista.length === 0) {
+                cont.innerHTML = '<div class="vacio">Aún no hay respuestas registradas.</div>';
+                return;
+            }
+            
+            cont.innerHTML = lista.slice(0, 20).map(h => {
+                const hace = Math.floor((Date.now() - h.timestamp) / 1000);
+                const haceTexto = hace < 60 ? `hace ${hace}s` :
+                                  hace < 3600 ? `hace ${Math.floor(hace/60)}min` :
+                                  `hace ${Math.floor(hace/3600)}h`;
+                const numCorto = h.numero ? h.numero.slice(-4) : '????';
+                return `
+                    <div class="historial-item">
+                        <span class="zona">${escapeHtml(h.zonaNombre)}</span>
+                        · 👤 …${numCorto}
+                        <br><span class="tiempo">${haceTexto}</span>
+                    </div>
+                `;
+            }).join('');
         }
 
         // ==================== DETECCIONES ====================
@@ -903,12 +1138,13 @@
 
         cargarTodo();
         cargarZonasLista().then(() => cargarDetectados());
-
+        
         setInterval(cargarStatus, 5000);
         setInterval(() => {
             const haySelectAbierto = document.activeElement?.tagName === 'SELECT';
             if (!haySelectAbierto) {
                 cargarDetectados();
+                cargarHistorial();  // 🔧 Recargar historial
             }
         }, 5000);
     </script>
