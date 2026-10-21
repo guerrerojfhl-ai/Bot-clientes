@@ -23,7 +23,6 @@ process.env.BAILEYS_LOG_LEVEL = 'silent';
 require('dotenv').config();
 
 // ==================== SECRETO ====================
-// 🔒 El secret DEBE venir de variable de entorno. Nunca hardcodeado.
 const SECRET = process.env.BOT_SECRET;
 
 if (!SECRET) {
@@ -38,7 +37,6 @@ const CONFIG_PATH = path.join(__dirname, 'config-zonas.json');
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const SESSION_DIR = path.join(__dirname, 'session-imagenes');
 
-// 🔧 CORRECCIÓN 1: Crear carpeta public/ si no existe
 if (!fs.existsSync(PUBLIC_DIR)) {
     fs.mkdirSync(PUBLIC_DIR, { recursive: true });
     console.log('📝 Carpeta public/ creada');
@@ -62,7 +60,7 @@ const CONFIG = {
 const detecciones = new Map();
 const MAX_DETECCIONES = 100;
 
-function agregarDeteccion(jid, numero, texto, tipo) {
+function agregarDeteccion(jid, numero, texto, tipo, nombreGrupo = null) {
     const ahora = Date.now();
     const clave = jid + '|' + (numero || '');
     const existente = detecciones.get(clave);
@@ -70,10 +68,12 @@ function agregarDeteccion(jid, numero, texto, tipo) {
         existente.ultimaVez = ahora;
         existente.veces = (existente.veces || 1) + 1;
         existente.ultimoTexto = texto;
+        if (nombreGrupo) existente.nombreGrupo = nombreGrupo;
         return;
     }
     detecciones.set(clave, {
         jid, numero: numero || null,
+        nombreGrupo: nombreGrupo,
         primerTexto: texto, ultimoTexto: texto,
         primeraVez: ahora, ultimaVez: ahora,
         veces: 1, tipo
@@ -88,7 +88,7 @@ function agregarDeteccion(jid, numero, texto, tipo) {
 let sockGlobal = null;
 let reiniciando = false;
 let pairingCodeActual = null;
-let pairingCodeTimestamp = null;  // 🔧 CORRECCIÓN 3: timestamp
+let pairingCodeTimestamp = null;
 let pairingQRActual = null;
 let licenciaValida = null;
 let licenciaNumero = null;
@@ -226,12 +226,8 @@ function contieneKeyword(texto, keywords) {
 async function enviarYInstantaneo(sock, sender, msg, zonaKey) {
     try {
         if (!msg.key?.id) return;
-        
-        // ⏱️ Delay de 150ms antes de enviar
         await new Promise(r => setTimeout(r, 250));
-        
         await sock.sendMessage(sender, { text: CONFIG.Y }, { quoted: msg });
-        
         if (zonaKey) {
             const d = cargarDinamico();
             d.zonas[zonaKey].botActive = false;
@@ -308,7 +304,7 @@ async function reiniciarBot() {
         }
 
         pairingCodeActual = null;
-        pairingCodeTimestamp = null;  // 🔧 CORRECCIÓN 3
+        pairingCodeTimestamp = null;
         pairingQRActual = null;
         licenciaValida = null;
         licenciaRazon = 'SIN LICENCIA';
@@ -362,13 +358,13 @@ async function startBot() {
         if (!state.creds.registered) {
             if (!CONFIG.phoneNumber) {
                 console.log('\n⚠️  Falta configurar el número de WhatsApp.');
-                console.log('   Abre el panel: http://127.0.0.1:3000\n');
+                console.log('   Abre el panel: http://127.0.0.1:' + (process.env.PORT || 3000) + '\n');
             } else {
                 await new Promise(r => setTimeout(r, 3000));
                 try {
                     const code = await sock.requestPairingCode(CONFIG.phoneNumber);
                     pairingCodeActual = code;
-                    pairingCodeTimestamp = Date.now();  // 🔧 CORRECCIÓN 3
+                    pairingCodeTimestamp = Date.now();
                     pairingQRActual = null;
                     console.log(`\n🔑 CÓDIGO DE ENLACE: ${code}\n`);
                     console.log(`   WhatsApp → Ajustes → Dispositivos vinculados`);
@@ -394,7 +390,7 @@ async function startBot() {
 
             if (connection === 'open') {
                 pairingCodeActual = null;
-                pairingCodeTimestamp = null;  // 🔧 CORRECCIÓN 3
+                pairingCodeTimestamp = null;
                 pairingQRActual = null;
 
                 numeroConectado = sock.user.id.split(':')[0].split('@')[0];
@@ -462,12 +458,20 @@ async function startBot() {
                 realNumber = sender.split('@')[0];
             }
 
+            // 🔍 DETECCIÓN DE GRUPOS (con nombre)
             if (isGroup && fromMe) {
                 const textoRapido = msg.message.conversation ||
                                     msg.message.extendedTextMessage?.text || '';
                 if (textoRapido.trim() === '.' || textoRapido.trim() === '/info') {
-                    agregarDeteccion(sender, realNumber, textoRapido.trim(), 'grupo');
-                    console.log(`📩 GRUPO DETECTADO: ${sender} | Número: ${realNumber || 'yo'}`);
+                    let nombreGrupo = null;
+                    try {
+                        const metadata = await sock.groupMetadata(sender);
+                        nombreGrupo = metadata.subject;
+                    } catch (e) {
+                        console.log('⚠️ No se pudo obtener nombre del grupo:', e.message);
+                    }
+                    agregarDeteccion(sender, realNumber, textoRapido.trim(), 'grupo', nombreGrupo);
+                    console.log(`📩 GRUPO DETECTADO: ${sender} | Nombre: ${nombreGrupo || 'desconocido'} | Número: ${realNumber || 'yo'}`);
                 }
             }
 
@@ -525,7 +529,6 @@ async function startBot() {
 const app = express();
 app.use(express.json());
 
-// 🔧 CORRECCIÓN 2: Cache-control para archivos críticos de la PWA
 app.use(express.static(PUBLIC_DIR, {
     setHeaders: (res, filePath) => {
         if (filePath.endsWith('sw.js') || filePath.endsWith('manifest.json')) {
@@ -613,6 +616,50 @@ app.post('/api/zona/remove', (req, res) => {
     res.json({ ok: true });
 });
 
+// 🔧 NUEVO: Renombrar alias de un grupo o número
+app.post('/api/zona/relabel', (req, res) => {
+    const { valor, label } = req.body;
+    if (!valor) return res.status(400).json({ error: 'falta valor' });
+    
+    const d = cargarDinamico();
+    if (!label || !label.trim()) {
+        delete d.labels[valor];
+    } else {
+        d.labels[valor] = label.trim();
+    }
+    
+    guardarDinamico(d);
+    aplicarCambios();
+    res.json({ ok: true });
+});
+
+// 🔧 NUEVO: Copiar un grupo/número entre zonas
+app.post('/api/zona/copiar', (req, res) => {
+    const { origenKey, destinoKey, tipo, valor } = req.body;
+    
+    if (!origenKey || !destinoKey || !tipo || !valor) {
+        return res.status(400).json({ error: 'Faltan parámetros' });
+    }
+    
+    const d = cargarDinamico();
+    if (!d.zonas[origenKey] || !d.zonas[destinoKey]) {
+        return res.status(400).json({ error: 'Zona no existe' });
+    }
+    
+    const keyExtra = `${tipo}_extra`;
+    if (!d.zonas[destinoKey][keyExtra]) {
+        return res.status(400).json({ error: 'Tipo inválido' });
+    }
+    
+    if (!d.zonas[destinoKey][keyExtra].includes(valor)) {
+        d.zonas[destinoKey][keyExtra].push(valor);
+    }
+    
+    guardarDinamico(d);
+    aplicarCambios();
+    res.json({ ok: true });
+});
+
 app.post('/api/prewarm', async (req, res) => {
     if (!licenciaActiva()) return res.status(403).json({ error: 'LICENCIA REQUERIDA' });
     const { zonaKey } = req.body;
@@ -648,6 +695,7 @@ app.get('/api/detectados', (req, res) => {
         return {
             jid: d.jid,
             numero: d.numero,
+            nombreGrupo: d.nombreGrupo || null,
             ultimoTexto: d.ultimoTexto,
             ultimaVez: d.ultimaVez,
             veces: d.veces,
@@ -742,7 +790,7 @@ app.post('/api/regenerar-pairing', async (req, res) => {
         if (sockGlobal && !sockGlobal.user) {
             const code = await sockGlobal.requestPairingCode(CONFIG.phoneNumber);
             pairingCodeActual = code;
-            pairingCodeTimestamp = Date.now();  // 🔧 CORRECCIÓN 3
+            pairingCodeTimestamp = Date.now();
             pairingQRActual = null;
             console.log(`\n🔑 CÓDIGO DE ENLACE: ${code}\n`);
             return res.json({ ok: true, pairingCode: code });
@@ -763,7 +811,7 @@ app.get('/api/status', (req, res) => {
             razon: licenciaRazon,
         },
         pairingCode: pairingCodeActual,
-        pairingCodeTimestamp: pairingCodeTimestamp,  // 🔧 CORRECCIÓN 3
+        pairingCodeTimestamp: pairingCodeTimestamp,
         tieneQR: !!pairingQRActual,
         reiniciando: reiniciando,
     });
