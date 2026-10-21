@@ -635,9 +635,9 @@ app.post('/api/zona/relabel', (req, res) => {
 
 // 🔧 NUEVO: Copiar un grupo/número entre zonas
 app.post('/api/zona/copiar', (req, res) => {
-    const { origenKey, destinoKey, tipo, valor } = req.body;
+    const { destinoKey, tipo, valor } = req.body;
     
-    if (!origenKey || !destinoKey || !tipo || !valor) {
+    if (!destinoKey || !tipo || !valor) {
         return res.status(400).json({ error: 'Faltan parámetros' });
     }
     
