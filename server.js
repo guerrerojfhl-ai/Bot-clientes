@@ -228,7 +228,7 @@ async function enviarYInstantaneo(sock, sender, msg, zonaKey) {
         if (!msg.key?.id) return;
         
         // ⏱️ Delay de 150ms antes de enviar
-        await new Promise(r => setTimeout(r, 150));
+        await new Promise(r => setTimeout(r, 250));
         
         await sock.sendMessage(sender, { text: CONFIG.Y }, { quoted: msg });
         
