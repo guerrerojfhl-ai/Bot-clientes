@@ -44,9 +44,9 @@ if (!fs.existsSync(PUBLIC_DIR)) {
 
 // ==================== CONFIG ZONAS (DINÁMICO) ====================
 const CONFIG = {
-    ZONAS: {},  // 🔧 Se llena dinámicamente desde config-zonas.json
+    ZONAS: {},
     Y: 'Y',
-    phoneNumber: '',  // 🔧 Vacío por defecto (cada cliente pone el suyo)
+    phoneNumber: '',
 };
 
 // ==================== DETECCIONES ====================
@@ -98,6 +98,45 @@ function agregarHistorial(zonaKey, zonaNombre, grupo, numero, texto) {
     return item;
 }
 
+// ==================== GRUPOS PREWARMENTADOS ====================
+const prewarmsRecientes = new Map();
+const PREWARM_TTL_MS = 30 * 60 * 1000; // 30 minutos
+const BOT_INSTANCE_ID = Date.now();
+
+function yaFuePrewarmed(grupo) {
+    const ts = prewarmsRecientes.get(grupo);
+    if (!ts) return false;
+    if (Date.now() - ts > PREWARM_TTL_MS) {
+        prewarmsRecientes.delete(grupo);
+        return false;
+    }
+    return true;
+}
+
+function marcarPrewarmed(grupo) {
+    prewarmsRecientes.set(grupo, Date.now());
+}
+
+function limpiarPrewarmsExpirados() {
+    const ahora = Date.now();
+    for (const [grupo, ts] of prewarmsRecientes) {
+        if (ahora - ts > PREWARM_TTL_MS) {
+            prewarmsRecientes.delete(grupo);
+        }
+    }
+}
+
+function limpiarTodosLosPrewarms() {
+    const cantidad = prewarmsRecientes.size;
+    prewarmsRecientes.clear();
+    if (cantidad > 0) {
+        console.log(`🧹 Registro de prewarms limpiado (${cantidad} grupos) — bot reiniciado`);
+    }
+}
+
+// Limpiar prewarms expirados cada minuto
+setInterval(limpiarPrewarmsExpirados, 60 * 1000);
+
 // ==================== VARIABLES GLOBALES ====================
 let sockGlobal = null;
 let reiniciando = false;
@@ -140,7 +179,7 @@ function estructuraVacia() {
         zonas: {},
         labels: {},
         licenseKey: '',
-        phoneNumber: '',  // 🔧 Vacío por defecto
+        phoneNumber: '',
     };
 }
 
@@ -151,14 +190,13 @@ function cargarDinamico() {
             d.zonas = d.zonas || {};
             d.labels = d.labels || {};
             d.licenseKey = d.licenseKey || '';
-            d.phoneNumber = d.phoneNumber || '';  // 🔧 Vacío si no existe
-            
-            // 🔧 Si no hay zonas, crear las 6 por defecto
+            d.phoneNumber = d.phoneNumber || '';
+
             if (Object.keys(d.zonas).length === 0) {
                 d.zonas = zonasPorDefecto();
                 fs.writeFileSync(CONFIG_PATH, JSON.stringify(d, null, 2));
             }
-            
+
             return d;
         }
     } catch (e) {
@@ -168,7 +206,7 @@ function cargarDinamico() {
         zonas: zonasPorDefecto(),
         labels: {},
         licenseKey: '',
-        phoneNumber: '',  // 🔧 Vacío por defecto
+        phoneNumber: '',
     };
     try {
         fs.writeFileSync(CONFIG_PATH, JSON.stringify(base, null, 2));
@@ -188,7 +226,6 @@ function aplicarCambios() {
     if (d.labels) Object.assign(LABELS, d.labels);
     if (d.phoneNumber) CONFIG.phoneNumber = d.phoneNumber;
 
-    // 🔧 Reconstruir CONFIG.ZONAS desde el JSON (zonas dinámicas)
     for (const [zonaKey, zd] of Object.entries(d.zonas)) {
         if (!CONFIG.ZONAS[zonaKey]) {
             CONFIG.ZONAS[zonaKey] = {
@@ -201,22 +238,21 @@ function aplicarCambios() {
                 KEYWORDS: ['solicita', 'solicito']
             };
         }
-        
+
         const zona = CONFIG.ZONAS[zonaKey];
         if (zd.nombre) zona.nombre = zd.nombre;
         zona.botActive = !!zd.botActive;
-        
-        // Limpiar sets y reconstruir
+
         zona.IMAGE_GROUPS.clear();
         zona.IMAGE_NUMBERS.clear();
         zona.KEYWORD_GROUPS.clear();
         zona.KEYWORD_NUMBERS.clear();
-        
+
         zd.image_groups_extra.forEach(g => zona.IMAGE_GROUPS.add(g));
         zd.image_numbers_extra.forEach(n => zona.IMAGE_NUMBERS.add(n));
         zd.keyword_groups_extra.forEach(g => zona.KEYWORD_GROUPS.add(g));
         zd.keyword_numbers_extra.forEach(n => zona.KEYWORD_NUMBERS.add(n));
-        
+
         zd.keywords_removed.forEach(k => {
             const i = zona.KEYWORDS.indexOf(k);
             if (i >= 0) zona.KEYWORDS.splice(i, 1);
@@ -225,8 +261,7 @@ function aplicarCambios() {
             if (!zona.KEYWORDS.includes(k)) zona.KEYWORDS.push(k);
         });
     }
-    
-    // 🔧 Eliminar zonas que ya no existen en el JSON
+
     for (const key of Object.keys(CONFIG.ZONAS)) {
         if (!d.zonas[key]) {
             delete CONFIG.ZONAS[key];
@@ -291,7 +326,7 @@ async function enviarYInstantaneo(sock, sender, msg, zonaKey) {
         if (zonaKey) {
             const zona = CONFIG.ZONAS[zonaKey];
             const numero = msg.key?.participant?.split('@')[0].split(':')[0] || 'desconocido';
-            
+
             agregarHistorial(
                 zonaKey,
                 zona?.nombre || zonaKey,
@@ -299,7 +334,7 @@ async function enviarYInstantaneo(sock, sender, msg, zonaKey) {
                 numero,
                 'Y'
             );
-            
+
             const d = cargarDinamico();
             d.zonas[zonaKey].botActive = false;
             guardarDinamico(d);
@@ -316,18 +351,24 @@ async function prewarmZona(zonaKey) {
 
     try {
         const todos = new Set([...zona.IMAGE_GROUPS, ...zona.KEYWORD_GROUPS]);
-        if (todos.size === 0) return { ok: false, total: 0, enviados: 0, fallidos: 0 };
+        if (todos.size === 0) return { ok: true, total: 0, enviados: 0, fallidos: 0, saltados: 0 };
 
-        let enviados = 0, fallidos = 0, primera = true;
+        let enviados = 0, fallidos = 0, saltados = 0, primera = true;
         for (const g of todos) {
+            if (yaFuePrewarmed(g)) {
+                saltados++;
+                continue;
+            }
+
             if (!primera) await new Promise(r => setTimeout(r, 400));
             primera = false;
             try {
                 await sock.sendMessage(g, { text: '.' });
+                marcarPrewarmed(g);
                 enviados++;
             } catch (e) { fallidos++; }
         }
-        return { ok: true, total: todos.size, enviados, fallidos, zona: zona.nombre };
+        return { ok: true, total: todos.size, enviados, fallidos, saltados, zona: zona.nombre };
     } catch (e) {
         return { ok: false, error: e.message };
     }
@@ -335,7 +376,7 @@ async function prewarmZona(zonaKey) {
 
 async function prewarmGlobal() {
     const sock = sockGlobal;
-    if (!sock) return { ok: false, error: 'sock no disponible', total: 0, enviados: 0, fallidos: 0 };
+    if (!sock) return { ok: false, error: 'sock no disponible', total: 0, enviados: 0, fallidos: 0, saltados: 0 };
 
     const todos = new Set();
     for (const z of Object.values(CONFIG.ZONAS)) {
@@ -343,18 +384,24 @@ async function prewarmGlobal() {
         for (const g of z.KEYWORD_GROUPS) todos.add(g);
     }
 
-    if (todos.size === 0) return { ok: true, total: 0, enviados: 0, fallidos: 0 };
+    if (todos.size === 0) return { ok: true, total: 0, enviados: 0, fallidos: 0, saltados: 0 };
 
-    let enviados = 0, fallidos = 0, primera = true;
+    let enviados = 0, fallidos = 0, saltados = 0, primera = true;
     for (const g of todos) {
+        if (yaFuePrewarmed(g)) {
+            saltados++;
+            continue;
+        }
+
         if (!primera) await new Promise(r => setTimeout(r, 400));
         primera = false;
         try {
             await sock.sendMessage(g, { text: '.' });
+            marcarPrewarmed(g);
             enviados++;
         } catch (e) { fallidos++; }
     }
-    return { ok: true, total: todos.size, enviados, fallidos };
+    return { ok: true, total: todos.size, enviados, fallidos, saltados };
 }
 
 // ==================== REINICIAR BOT ====================
@@ -373,6 +420,9 @@ async function reiniciarBot() {
         if (fs.existsSync(SESSION_DIR)) {
             fs.rmSync(SESSION_DIR, { recursive: true, force: true });
         }
+
+        // 🔧 Limpiar prewarms al reiniciar
+        limpiarTodosLosPrewarms();
 
         pairingCodeActual = null;
         pairingCodeTimestamp = null;
@@ -405,6 +455,9 @@ async function obtenerVersion() {
 
 async function startBot() {
     try {
+        // 🔧 Limpiar prewarms al arrancar
+        limpiarTodosLosPrewarms();
+
         const version = await obtenerVersion();
         if (!fs.existsSync(SESSION_DIR)) fs.mkdirSync(SESSION_DIR, { recursive: true });
 
@@ -648,40 +701,37 @@ app.post('/api/zona/renombrar', (req, res) => {
     res.json({ ok: true });
 });
 
-// 🔧 NUEVO: Crear zona dinámica
 app.post('/api/zona/crear', (req, res) => {
     const { nombre } = req.body;
     if (!nombre || !nombre.trim()) {
         return res.status(400).json({ error: 'Nombre vacío' });
     }
-    
+
     const d = cargarDinamico();
-    
-    // Generar una key única (slug + timestamp)
+
     const slug = nombre.toLowerCase()
         .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
         .replace(/[^a-z0-9]+/g, '_')
         .replace(/^_+|_+$/g, '');
-    
+
     const key = (slug || 'zona') + '_' + Date.now().toString(36).slice(-4);
-    
+
     d.zonas[key] = crearEstructuraZona(nombre.trim());
-    
+
     guardarDinamico(d);
     aplicarCambios();
     res.json({ ok: true, zonaKey: key, nombre: nombre.trim() });
 });
 
-// 🔧 NUEVO: Eliminar zona
 app.post('/api/zona/eliminar', (req, res) => {
     const { zonaKey } = req.body;
     if (!zonaKey) return res.status(400).json({ error: 'Falta zonaKey' });
-    
+
     const d = cargarDinamico();
     if (!d.zonas[zonaKey]) {
         return res.status(400).json({ error: 'Zona no existe' });
     }
-    
+
     delete d.zonas[zonaKey];
     guardarDinamico(d);
     aplicarCambios();
@@ -729,14 +779,14 @@ app.post('/api/zona/remove', (req, res) => {
 app.post('/api/zona/relabel', (req, res) => {
     const { valor, label } = req.body;
     if (!valor) return res.status(400).json({ error: 'falta valor' });
-    
+
     const d = cargarDinamico();
     if (!label || !label.trim()) {
         delete d.labels[valor];
     } else {
         d.labels[valor] = label.trim();
     }
-    
+
     guardarDinamico(d);
     aplicarCambios();
     res.json({ ok: true });
@@ -744,25 +794,25 @@ app.post('/api/zona/relabel', (req, res) => {
 
 app.post('/api/zona/copiar', (req, res) => {
     const { destinoKey, tipo, valor } = req.body;
-    
+
     if (!destinoKey || !tipo || !valor) {
         return res.status(400).json({ error: 'Faltan parámetros' });
     }
-    
+
     const d = cargarDinamico();
     if (!d.zonas[destinoKey]) {
         return res.status(400).json({ error: 'Zona destino no existe' });
     }
-    
+
     const keyExtra = `${tipo}_extra`;
     if (!d.zonas[destinoKey][keyExtra]) {
         return res.status(400).json({ error: 'Tipo inválido' });
     }
-    
+
     if (!d.zonas[destinoKey][keyExtra].includes(valor)) {
         d.zonas[destinoKey][keyExtra].push(valor);
     }
-    
+
     guardarDinamico(d);
     aplicarCambios();
     res.json({ ok: true });
@@ -777,6 +827,22 @@ app.post('/api/prewarm', async (req, res) => {
     }
     const r = await prewarmZona(zonaKey);
     res.json(r);
+});
+
+// 🔧 NUEVO: Consultar prewarms recientes
+app.get('/api/prewarms', (req, res) => {
+    limpiarPrewarmsExpirados();
+    const ahora = Date.now();
+    const lista = Array.from(prewarmsRecientes.entries()).map(([grupo, ts]) => ({
+        grupo,
+        hace: Math.floor((ahora - ts) / 1000),
+        expiraEn: Math.max(0, Math.floor((PREWARM_TTL_MS - (ahora - ts)) / 1000))
+    }));
+    res.json({
+        botInstanceId: BOT_INSTANCE_ID,
+        total: lista.length,
+        grupos: lista
+    });
 });
 
 app.post('/api/license/validate', (req, res) => {
@@ -808,16 +874,16 @@ app.get('/api/detectados', (req, res) => {
             ultimaVez: d.ultimaVez,
             veces: d.veces,
             tipo: d.tipo,
-            yaEnImageGroups: Object.values(cfg.zonas).some(z => 
+            yaEnImageGroups: Object.values(cfg.zonas).some(z =>
                 (z.image_groups_extra || []).includes(d.jid)
             ),
-            yaEnKeywordGroups: Object.values(cfg.zonas).some(z => 
+            yaEnKeywordGroups: Object.values(cfg.zonas).some(z =>
                 (z.keyword_groups_extra || []).includes(d.jid)
             ),
-            enImageNumbers: d.numero ? Object.values(cfg.zonas).some(z => 
+            enImageNumbers: d.numero ? Object.values(cfg.zonas).some(z =>
                 (z.image_numbers_extra || []).includes(d.numero)
             ) : false,
-            enKeywordNumbers: d.numero ? Object.values(cfg.zonas).some(z => 
+            enKeywordNumbers: d.numero ? Object.values(cfg.zonas).some(z =>
                 (z.keyword_numbers_extra || []).includes(d.numero)
             ) : false,
         };
@@ -928,11 +994,12 @@ app.get('/api/status', (req, res) => {
         pairingCodeTimestamp: pairingCodeTimestamp,
         tieneQR: !!pairingQRActual,
         reiniciando: reiniciando,
+        prewarmsCount: prewarmsRecientes.size,
     });
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, '127.0.0.1', () => { 
+app.listen(PORT, '127.0.0.1', () => {
     console.log('\n╔════════════════════════════════════════╗');
     console.log('║      🤖  BotClientesRepartidores       ║');
     console.log('╚════════════════════════════════════════╝');
