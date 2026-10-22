@@ -826,24 +826,27 @@
             actualizarBotonNotif();
         }
 
-        function mostrarNotificacion(titulo, cuerpo) {
-            if (!('Notification' in window)) return;
-            if (Notification.permission !== 'granted') return;
+       async function mostrarNotificacion(titulo, cuerpo) {
+    if (!('Notification' in window)) return;
+    if (Notification.permission !== 'granted') return;
 
-            try {
-                new Notification(titulo, {
-                    body: cuerpo,
-                    icon: '/icon-192.png',
-                    badge: '/icon-192.png',
-                    tag: 'bot-respuesta-' + Date.now(),
-                    requireInteraction: false,
-                    silent: false
-                });
-            } catch (e) {
-                console.warn('No se pudo mostrar notificación:', e);
-            }
-        }
-
+    try {
+        // Esperar a que el Service Worker esté listo
+        const registration = await navigator.serviceWorker.ready;
+        
+        // Usar showNotification (el método correcto en Android)
+        await registration.showNotification(titulo, {
+            body: cuerpo,
+            icon: '/icon-192.png',
+            badge: '/icon-192.png',
+            tag: 'bot-respuesta-' + Date.now(),
+            requireInteraction: false,
+            silent: false
+        });
+    } catch (e) {
+        console.warn('No se pudo mostrar notificación vía SW:', e);
+    }
+}
         // ==================== CARGA INICIAL ====================
         async function cargarTodo() {
             await cargarStatus();
