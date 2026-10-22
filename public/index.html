@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>BotClientesRepartidores</title>
+    <title>BotClientes - Panel de Administración</title>
 
     <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#22c55e">
+    <meta name="theme-color" content="#10b981">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -16,436 +16,797 @@
 
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        :root {
+            --bg-primary: #0f1419;
+            --bg-secondary: #1a1f2e;
+            --bg-card: #1e2532;
+            --bg-hover: #252d3d;
+            --bg-input: #0f1419;
+            --border: #2a3242;
+            --border-light: #374151;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent: #10b981;
+            --accent-hover: #059669;
+            --accent-glow: rgba(16, 185, 129, 0.3);
+            --blue: #3b82f6;
+            --red: #ef4444;
+            --yellow: #f59e0b;
+            --purple: #8b5cf6;
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+            --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.5);
+        }
+
+        body.light {
+            --bg-primary: #f8fafc;
+            --bg-secondary: #f1f5f9;
+            --bg-card: #ffffff;
+            --bg-hover: #f8fafc;
+            --bg-input: #ffffff;
+            --border: #e2e8f0;
+            --border-light: #cbd5e1;
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --text-muted: #94a3b8;
+            --accent-glow: rgba(16, 185, 129, 0.15);
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+            --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+
         body {
-            font-family: system-ui, -apple-system, sans-serif;
-            background: #0a0a0a;
-            color: #fff;
-            padding: 16px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            padding: 0;
             padding-bottom: 40px;
-            transition: background 0.3s, color 0.3s;
+            transition: background 0.3s ease, color 0.3s ease;
+            line-height: 1.5;
+            min-height: 100vh;
         }
-        h1 { font-size: 20px; margin-bottom: 16px; }
-        h2 { font-size: 15px; margin-bottom: 10px; color: #4ade80; }
-        h3 { font-size: 14px; margin-bottom: 8px; color: #60a5fa; }
-        h4 { font-size: 13px; margin-top: 12px; margin-bottom: 6px; color: #888; }
-        .card {
-            background: #161616;
-            border-radius: 12px;
+
+        /* Header */
+        .header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow-md);
+            backdrop-filter: blur(10px);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header-logo {
+            font-size: 28px;
+            line-height: 1;
+        }
+
+        .header-title {
+            font-size: 16px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent), var(--blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header-subtitle {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: -2px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .btn-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            padding: 0;
+            margin: 0;
+        }
+
+        .btn-icon:hover {
+            background: var(--bg-hover);
+            border-color: var(--accent);
+            transform: translateY(-1px);
+        }
+
+        .btn-icon:active {
+            transform: scale(0.95);
+        }
+
+        /* Contenedor principal */
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
             padding: 16px;
-            margin-bottom: 12px;
-            border: 1px solid #262626;
-            transition: background 0.3s, border-color 0.3s;
         }
-        .card.alert { border-color: #f59e0b; background: #1c1408; }
-        .card.pairing { border-color: #22c55e; background: #0d1f0d; box-shadow: 0 0 20px rgba(34,197,94,0.2); }
-        .card.zona { border-color: #262626; }
-        .card.zona.activa { border-color: #22c55e; background: #0d1f0d; }
+
+        h1 { font-size: 24px; margin-bottom: 16px; }
+        h2 { 
+            font-size: 14px; 
+            margin-bottom: 12px; 
+            color: var(--text-secondary); 
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        h3 { font-size: 16px; margin-bottom: 8px; font-weight: 600; }
+        h4 { 
+            font-size: 12px; 
+            margin-top: 16px; 
+            margin-bottom: 8px; 
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border-radius: 14px;
+            padding: 18px;
+            margin-bottom: 14px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-sm);
+            transition: all 0.2s ease;
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-md);
+        }
+
+        .card.alert { 
+            border-color: var(--yellow); 
+            background: linear-gradient(135deg, var(--bg-card), rgba(245, 158, 11, 0.05));
+        }
+
+        .card.pairing { 
+            border-color: var(--accent); 
+            background: linear-gradient(135deg, var(--bg-card), rgba(16, 185, 129, 0.08));
+            box-shadow: 0 0 24px var(--accent-glow);
+        }
+
+        .card.zona { border-color: var(--border); }
+        
+        .card.zona.activa { 
+            border-color: var(--accent); 
+            background: linear-gradient(135deg, var(--bg-card), rgba(16, 185, 129, 0.06));
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        /* Inputs */
         input, textarea, select {
             width: 100%;
-            padding: 10px;
-            background: #0a0a0a;
-            border: 1px solid #333;
-            border-radius: 8px;
-            color: #fff;
+            padding: 11px 14px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text-primary);
             font-size: 14px;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
             font-family: inherit;
-            transition: background 0.3s, color 0.3s, border-color 0.3s;
+            transition: all 0.2s ease;
         }
+
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        input::placeholder {
+            color: var(--text-muted);
+        }
+
+        /* Botones */
         button {
-            padding: 12px;
-            background: #22c55e;
+            padding: 12px 16px;
+            background: var(--accent);
             border: none;
-            border-radius: 8px;
+            border-radius: 10px;
             color: #fff;
             font-weight: 600;
             cursor: pointer;
             width: 100%;
             font-size: 14px;
             margin-bottom: 8px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
         }
-        button:active { opacity: 0.8; }
-        button.danger { background: #ef4444; }
-        button.secondary { background: #3b82f6; }
-        button.warning { background: #f59e0b; color: #000; }
-        button.gray { background: #404040; }
-        button.small { padding: 6px 10px; font-size: 12px; width: auto; display: inline-block; margin: 2px; }
+
+        button:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+        button:active { 
+            transform: scale(0.98) translateY(0);
+        }
+
+        button.danger { background: var(--red); }
+        button.danger:hover { background: #dc2626; }
+        button.secondary { background: var(--blue); }
+        button.secondary:hover { background: #2563eb; }
+        button.warning { background: var(--yellow); color: #000; }
+        button.warning:hover { background: #d97706; }
+        button.gray { background: var(--bg-hover); color: var(--text-primary); border: 1px solid var(--border); }
+        button.gray:hover { background: var(--border); }
+        button.small { 
+            padding: 8px 12px; 
+            font-size: 12px; 
+            width: auto; 
+            display: inline-flex; 
+            margin: 4px 2px; 
+        }
+
+        /* Status */
         .status {
-            display: inline-block;
-            padding: 4px 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 14px;
             border-radius: 20px;
             font-size: 12px;
-            font-weight: bold;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
-        .status.on { background: #22c55e; color: #000; }
-        .status.off { background: #ef4444; }
-        .info { font-size: 12px; color: #888; margin-top: 6px; }
-        .info.warn { color: #f59e0b; font-weight: bold; }
-        .info.ok { color: #22c55e; font-weight: bold; }
+
+        .status.on { 
+            background: var(--accent); 
+            color: #000;
+            box-shadow: 0 0 12px var(--accent-glow);
+        }
+        .status.off { 
+            background: var(--red); 
+            color: #fff;
+        }
+
+        .info { font-size: 13px; color: var(--text-secondary); margin-top: 6px; }
+        .info.warn { color: var(--yellow); font-weight: 600; }
+        .info.ok { color: var(--accent); font-weight: 600; }
+
+        /* Toast */
         .toast {
             position: fixed;
-            bottom: 20px;
+            bottom: 24px;
             left: 50%;
-            transform: translateX(-50%);
-            background: #22c55e;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--accent);
             color: #000;
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-weight: bold;
-            display: none;
-            z-index: 999;
+            padding: 14px 22px;
+            border-radius: 12px;
+            font-weight: 700;
+            opacity: 0;
+            z-index: 9999;
             max-width: 90%;
             text-align: center;
+            box-shadow: var(--shadow-lg);
+            transition: all 0.3s ease;
+            pointer-events: none;
         }
-        .toast.error { background: #ef4444; color: #fff; }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        .toast.error { background: var(--red); color: #fff; }
+
+        /* Pairing code */
         .pairing-code {
-            font-size: 32px;
-            font-weight: bold;
+            font-size: 36px;
+            font-weight: 800;
             text-align: center;
-            letter-spacing: 4px;
-            font-family: ui-monospace, monospace;
-            color: #4ade80;
-            padding: 20px;
-            background: #0a0a0a;
-            border-radius: 8px;
-            margin: 12px 0;
+            letter-spacing: 6px;
+            font-family: 'SF Mono', Monaco, ui-monospace, monospace;
+            color: var(--accent);
+            padding: 24px;
+            background: var(--bg-input);
+            border-radius: 12px;
+            margin: 16px 0;
             user-select: all;
             cursor: pointer;
-            border: 2px solid #22c55e;
+            border: 2px solid var(--accent);
+            box-shadow: 0 0 24px var(--accent-glow);
+            transition: all 0.2s ease;
         }
+
+        .pairing-code:hover {
+            transform: scale(1.02);
+        }
+
+        /* Lista items */
         .lista-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 8px;
-            background: #0a0a0a;
-            border-radius: 6px;
-            margin-bottom: 4px;
-            font-size: 12px;
-            font-family: ui-monospace, monospace;
-            gap: 6px;
+            padding: 10px 12px;
+            background: var(--bg-input);
+            border-radius: 10px;
+            margin-bottom: 6px;
+            font-size: 13px;
+            font-family: 'SF Mono', Monaco, ui-monospace, monospace;
+            gap: 8px;
+            border: 1px solid var(--border);
+            transition: all 0.2s ease;
         }
+
+        .lista-item:hover {
+            border-color: var(--border-light);
+            background: var(--bg-hover);
+        }
+
         .lista-item .item-info { flex: 1; word-break: break-all; }
-        .lista-item .item-info b { display: block; font-family: system-ui, sans-serif; font-size: 12px; }
-        .lista-item .item-info small { display: block; opacity: 0.55; font-size: 10px; margin-top: 2px; }
+        .lista-item .item-info b { 
+            display: block; 
+            font-family: -apple-system, system-ui, sans-serif; 
+            font-size: 13px; 
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+        .lista-item .item-info small { 
+            display: block; 
+            opacity: 0.7; 
+            font-size: 11px; 
+            color: var(--text-muted);
+        }
+        
         .lista-item button {
             width: auto;
-            padding: 4px 8px;
-            font-size: 11px;
-            margin: 0;
-            background: #ef4444;
-        }
-        .lista-item button.edit { background: #3b82f6; }
-        .lista-item button.copy { background: #8b5cf6; }
-        .detectado {
-            background: #0a0a0a;
-            border: 1px solid #333;
-            border-radius: 8px;
-            padding: 10px;
-            margin-bottom: 8px;
-            font-size: 12px;
-        }
-        .detectado .jid {
-            font-family: ui-monospace, monospace;
-            color: #4ade80;
-            font-size: 11px;
-            word-break: break-all;
-            margin-bottom: 4px;
-        }
-        .detectado .jid small { display: block; opacity: 0.5; font-size: 9px; margin-top: 2px; color: #fff; }
-        .detectado .nombre-grupo {
-            font-family: system-ui, sans-serif;
-            color: #60a5fa;
+            padding: 6px 10px;
             font-size: 13px;
-            font-weight: bold;
-            margin-bottom: 4px;
+            margin: 0;
+            background: var(--red);
+            flex-shrink: 0;
         }
-        .detectado .meta {
-            color: #888;
-            font-size: 11px;
+
+        .lista-item button.edit { background: var(--blue); }
+        .lista-item button.copy { background: var(--purple); }
+
+        /* Detectados */
+        .detectado {
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px;
+            margin-bottom: 10px;
+            font-size: 13px;
+            transition: all 0.2s ease;
+        }
+
+        .detectado:hover {
+            border-color: var(--border-light);
+        }
+
+        .detectado .jid {
+            font-family: 'SF Mono', Monaco, ui-monospace, monospace;
+            color: var(--accent);
+            font-size: 12px;
+            word-break: break-all;
             margin-bottom: 6px;
         }
+
+        .detectado .jid small { 
+            display: block; 
+            opacity: 0.6; 
+            font-size: 10px; 
+            margin-top: 3px; 
+            color: var(--text-muted);
+        }
+
+        .detectado .nombre-grupo {
+            font-family: -apple-system, system-ui, sans-serif;
+            color: var(--blue);
+            font-size: 15px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .detectado .meta {
+            color: var(--text-muted);
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+
         .detectado .acciones {
             display: flex;
             gap: 6px;
             flex-wrap: wrap;
-            margin-top: 4px;
+            margin-top: 8px;
         }
+
         .detectado button {
-            padding: 5px 8px;
-            font-size: 11px;
+            padding: 8px 12px;
+            font-size: 12px;
             width: auto;
             margin: 0;
-            border-radius: 6px;
+            border-radius: 8px;
             font-weight: 600;
             flex: 1;
-            min-width: 80px;
+            min-width: 90px;
         }
+
         .detectado select {
-            padding: 5px 8px;
-            font-size: 11px;
-            border-radius: 6px;
-            background: #0a0a0a;
-            color: #fff;
-            border: 1px solid #333;
-            width: 100%;
-            margin-bottom: 6px;
+            padding: 8px 12px;
+            font-size: 13px;
+            border-radius: 8px;
+            margin-bottom: 8px;
         }
+
+        /* Badges */
         .badge {
-            display: inline-block;
-            padding: 2px 6px;
-            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            padding: 3px 8px;
+            border-radius: 6px;
             font-size: 10px;
+            font-weight: 700;
             margin-left: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
         }
-        .badge.ok { background: #22c55e; color: #000; }
+
+        .badge.ok { 
+            background: var(--accent); 
+            color: #000;
+        }
+
         .vacio {
             text-align: center;
-            color: #666;
-            padding: 20px;
-            font-size: 13px;
+            color: var(--text-muted);
+            padding: 30px 20px;
+            font-size: 14px;
         }
 
         /* Modal */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.85);
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(4px);
             z-index: 1000;
             display: none;
             align-items: center;
             justify-content: center;
             padding: 16px;
         }
-        .modal-overlay.active { display: flex; }
+
+        .modal-overlay.active { 
+            display: flex;
+            animation: fadeIn 0.2s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
         .modal {
-            background: #161616;
-            border-radius: 12px;
-            padding: 20px;
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 24px;
             max-width: 500px;
             width: 100%;
-            border: 1px solid #333;
+            border: 1px solid var(--border);
             max-height: 90vh;
             overflow-y: auto;
+            box-shadow: var(--shadow-lg);
+            animation: slideUp 0.3s ease;
         }
-        .modal h3 { margin-bottom: 12px; color: #4ade80; }
-        .modal label { display: block; font-size: 12px; color: #888; margin-bottom: 4px; margin-top: 12px; }
-        .modal .modal-actions { display: flex; gap: 8px; margin-top: 16px; }
+
+        .modal h3 { 
+            margin-bottom: 16px; 
+            color: var(--accent);
+            font-size: 18px;
+        }
+
+        .modal label { 
+            display: block; 
+            font-size: 12px; 
+            color: var(--text-secondary); 
+            margin-bottom: 6px; 
+            margin-top: 14px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .modal .modal-actions { 
+            display: flex; 
+            gap: 10px; 
+            margin-top: 20px; 
+        }
+
         .modal .modal-actions button { flex: 1; }
 
-        /* Dashboard de estadísticas */
+        /* Stats grid */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 8px;
-            margin-top: 12px;
+            gap: 12px;
+            margin-top: 14px;
         }
+
         .stat-box {
-            background: #0a0a0a;
-            padding: 12px;
-            border-radius: 8px;
+            background: var(--bg-input);
+            padding: 16px;
+            border-radius: 12px;
             text-align: center;
-            border: 1px solid #333;
+            border: 1px solid var(--border);
+            transition: all 0.2s ease;
         }
+
+        .stat-box:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+        }
+
         .stat-box .num {
-            font-size: 24px;
-            font-weight: bold;
-            color: #4ade80;
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--accent);
+            line-height: 1.1;
         }
+
         .stat-box .label {
             font-size: 11px;
-            color: #888;
-            margin-top: 4px;
+            color: var(--text-muted);
+            margin-top: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
         }
 
         /* Buscador */
         .buscador-container {
-            margin-bottom: 12px;
+            margin-bottom: 16px;
+            position: relative;
         }
+
         .buscador-container input {
-            background: #161616;
-            border: 1px solid #22c55e;
-            font-size: 14px;
-            padding: 12px;
+            background: var(--bg-card);
+            border: 2px solid var(--border);
+            font-size: 15px;
+            padding: 14px 16px 14px 44px;
+            margin-bottom: 0;
+            border-radius: 12px;
         }
 
-        /* Tema claro */
-        body.light {
-            background: #f5f5f5;
-            color: #111;
-        }
-        body.light .card {
-            background: #fff;
-            border-color: #ddd;
-        }
-        body.light .card.zona.activa {
-            background: #dcfce7;
-            border-color: #22c55e;
-        }
-        body.light h1, body.light h2, body.light h3, body.light h4 { color: #111; }
-        body.light h2 { color: #16a34a; }
-        body.light h3 { color: #2563eb; }
-        body.light h4 { color: #666; }
-        body.light input, body.light textarea, body.light select {
-            background: #f9f9f9;
-            color: #111;
-            border-color: #ccc;
-        }
-        body.light .lista-item, body.light .detectado, body.light .stat-box, body.light .pairing-code {
-            background: #f9f9f9;
-            border-color: #ddd;
-        }
-        body.light .info { color: #666; }
-        body.light .vacio { color: #999; }
-        body.light .buscador-container input {
-            background: #fff;
-            color: #111;
+        .buscador-container input:focus {
+            border-color: var(--accent);
         }
 
-        /* Toggle de tema */
-        .theme-toggle {
-            position: fixed;
-            top: 16px;
-            right: 16px;
-            width: 44px;
-            height: 44px;
-            border-radius: 50%;
-            background: #22c55e;
-            border: none;
-            font-size: 20px;
-            cursor: pointer;
-            z-index: 500;
-            padding: 0;
-            margin: 0;
-            box-shadow: 0 4px 12px rgba(34,197,94,0.4);
+        .buscador-container::before {
+            content: '🔍';
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 16px;
+            pointer-events: none;
+            z-index: 1;
         }
-        .theme-toggle:active { transform: scale(0.95); }
 
-        /* Historial de respuestas */
+        /* Historial */
         .historial-item {
-            padding: 8px;
-            background: #0a0a0a;
-            border-radius: 6px;
-            margin-bottom: 4px;
-            font-size: 11px;
-            border-left: 3px solid #22c55e;
-        }
-        .historial-item .tiempo { color: #888; font-size: 10px; }
-        .historial-item .zona { color: #60a5fa; font-weight: bold; }
-        body.light .historial-item { background: #f9f9f9; }
-
-        body.pwa-mode {
-            padding-top: max(16px, env(safe-area-inset-top));
-            padding-bottom: max(40px, env(safe-area-inset-bottom));
+            padding: 10px 12px;
+            background: var(--bg-input);
+            border-radius: 10px;
+            margin-bottom: 6px;
+            font-size: 12px;
+            border-left: 3px solid var(--accent);
+            transition: all 0.2s ease;
         }
 
+        .historial-item:hover {
+            background: var(--bg-hover);
+        }
+
+        .historial-item .tiempo { 
+            color: var(--text-muted); 
+            font-size: 11px; 
+        }
+
+        .historial-item .zona { 
+            color: var(--blue); 
+            font-weight: 700; 
+        }
+
+        /* Animaciones */
         @keyframes slideUp {
-            from { transform: translateY(100px); opacity: 0; }
+            from { transform: translateY(30px); opacity: 0; }
             to { transform: translateY(0); opacity: 1; }
         }
+
         @keyframes slideDown {
             from { transform: translateY(-100px); opacity: 0; }
             to { transform: translateY(0); opacity: 1; }
         }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .card { animation: fadeIn 0.4s ease; }
+
+        /* PWA mode */
+        body.pwa-mode {
+            padding-top: max(0px, env(safe-area-inset-top));
+            padding-bottom: max(40px, env(safe-area-inset-bottom));
+        }
+
+        body.pwa-mode .header {
+            padding-top: max(12px, env(safe-area-inset-top));
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .header-title { font-size: 14px; }
+            .header-logo { font-size: 24px; }
+            .container { padding: 12px; }
+            .card { padding: 14px; }
+            .stat-box .num { font-size: 24px; }
+            .pairing-code { font-size: 28px; letter-spacing: 4px; }
+        }
     </style>
 </head>
 <body>
-    <button class="theme-toggle" onclick="toggleTema()" id="theme-toggle" title="Cambiar tema">🌙</button>
-
-    <h1>🤖 BotClientesRepartidores</h1>
-
-    <!-- Dashboard de estadísticas -->
-    <div class="card">
-        <h2>📊 Resumen</h2>
-        <div class="stats-grid">
-            <div class="stat-box">
-                <div class="num" id="stat-grupos">0</div>
-                <div class="label">Grupos</div>
-            </div>
-            <div class="stat-box">
-                <div class="num" id="stat-numeros">0</div>
-                <div class="label">Números</div>
-            </div>
-            <div class="stat-box">
-                <div class="num" id="stat-keywords">0</div>
-                <div class="label">Keywords</div>
-            </div>
-            <div class="stat-box">
-                <div class="num" id="stat-activas">0</div>
-                <div class="label">Zonas activas</div>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <div class="header-logo">🤖</div>
+            <div>
+                <div class="header-title">BotClientes</div>
+                <div class="header-subtitle">Panel de Administración</div>
             </div>
         </div>
+        <div class="header-actions">
+            <button class="btn-icon" onclick="toggleTema()" id="theme-toggle" title="Cambiar tema">🌙</button>
+            <button class="btn-icon" onclick="cargarTodo()" title="Actualizar">🔄</button>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Dashboard de estadísticas -->
+        <div class="card">
+            <h2>📊 Resumen</h2>
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="num" id="stat-grupos">0</div>
+                    <div class="label">Grupos</div>
+                </div>
+                <div class="stat-box">
+                    <div class="num" id="stat-numeros">0</div>
+                    <div class="label">Números</div>
+                </div>
+                <div class="stat-box">
+                    <div class="num" id="stat-keywords">0</div>
+                    <div class="label">Keywords</div>
+                </div>
+                <div class="stat-box">
+                    <div class="num" id="stat-activas">0</div>
+                    <div class="label">Zonas activas</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estado del bot -->
+        <div class="card">
+            <h2>📊 Estado del Bot</h2>
+            <p style="margin-bottom: 8px;">Conexión: <span id="estado-conexion" class="status off">DESCONECTADO</span></p>
+            <p class="info" id="numero-info">Número: --</p>
+            <p class="info" id="licencia-info">Licencia: --</p>
+        </div>
+
+        <!-- Pairing code -->
+        <div class="card pairing" id="pairing-card" style="display:none;">
+            <h2>🔑 Código de Vinculación</h2>
+            <p class="info">Copia el código y mételo en WhatsApp:</p>
+            <div class="pairing-code" id="pairing-code" onclick="copiarPairing()">----</div>
+            <p class="info" style="text-align:center;">👆 Toca para copiar</p>
+            <p class="info" style="text-align:center; color:var(--yellow);">⏱️ Expira en unos minutos</p>
+        </div>
+
+        <!-- Configurar teléfono -->
+        <div class="card alert">
+            <h2>📞 Configurar Teléfono</h2>
+            <p class="info">Formato: código de país + número (solo dígitos)</p>
+            <p class="info">Ejemplo México: <b>5216691234567</b></p>
+            <input id="phoneInput" placeholder="Ej: 521XXXXXXXXXX" type="tel">
+            <button class="warning" onclick="guardarTelefono()">💾 Guardar y Reiniciar Bot</button>
+            <button class="secondary" onclick="regenerarPairing()" style="margin-top: 8px;">🔄 Generar Código Nuevo</button>
+        </div>
+
+        <!-- Licencia -->
+        <div class="card">
+            <h2>🔑 Licencia</h2>
+            <input id="licenseKey" placeholder="XXXXXXXX-XXXXXXX-XXXXXXXX">
+            <button onclick="validarLicencia()">✅ Validar</button>
+            <p class="info" id="licencia-detalle">--</p>
+        </div>
+
+        <!-- Prewarm global -->
+        <div class="card">
+            <h2>🔥 Prewarm Global</h2>
+            <button class="secondary" onclick="prewarm('global')">🔥 Enviar Prewarm a Todas las Zonas</button>
+        </div>
+
+        <!-- Historial -->
+        <div class="card">
+            <h2>📈 Últimas respuestas</h2>
+            <p class="info">Cuando el bot responde "Y", aparece aquí.</p>
+            <div id="historial" style="margin-top: 12px; max-height: 300px; overflow-y: auto;">Cargando...</div>
+        </div>
+
+        <!-- Detecciones -->
+        <div class="card">
+            <h2>🔍 Grupos Detectados</h2>
+            <p class="info">
+                Manda un mensaje con un punto <b>"."</b> en cualquier grupo donde esté el bot.
+                Aparecerá aquí con su nombre para que lo agregues a una zona.
+            </p>
+            <div id="detectados" style="margin-top: 12px;">Cargando...</div>
+            <button class="gray" onclick="limpiarDetectados()" style="margin-top: 8px;">🗑️ Limpiar Lista</button>
+        </div>
+
+        <!-- Buscador -->
+        <div class="buscador-container">
+            <input id="buscar" placeholder="Buscar grupo, número o keyword...">
+        </div>
+
+        <!-- Zonas -->
+        <h2>🗺️ Zonas</h2>
+        <button class="secondary" onclick="nuevaZona()" style="margin-bottom:12px;">➕ Nueva Zona</button>
+        <div id="zonas-container"></div>
     </div>
 
-    <div class="card">
-        <h2>📊 Estado del Bot</h2>
-        <p>Conexión: <span id="estado-conexion" class="status off">DESCONECTADO</span></p>
-        <p class="info" id="numero-info">Número: --</p>
-        <p class="info" id="licencia-info">Licencia: --</p>
-        <button class="secondary" onclick="cargarTodo()">🔄 Actualizar</button>
-    </div>
-
-    <div class="card pairing" id="pairing-card" style="display:none;">
-        <h2>🔑 Código de Vinculación</h2>
-        <p class="info">Copia el código y mételo en WhatsApp:</p>
-        <div class="pairing-code" id="pairing-code" onclick="copiarPairing()">----</div>
-        <p class="info" style="text-align:center;">👆 Toca para copiar</p>
-        <p class="info" style="text-align:center; color:#f59e0b;">⏱️ Expira en unos minutos</p>
-    </div>
-
-    <div class="card alert">
-        <h2>📞 Configurar Teléfono</h2>
-        <p class="info">Formato: código de país + número (solo dígitos)</p>
-        <p class="info">Ejemplo México: <b>5216691234567</b></p>
-        <input id="phoneInput" placeholder="Ej: 521XXXXXXXXXX" type="tel">
-        <button class="warning" onclick="guardarTelefono()">💾 Guardar y Reiniciar Bot</button>
-        <button class="secondary" onclick="regenerarPairing()" style="margin-top: 8px;">🔄 Generar Código Nuevo</button>
-    </div>
-
-    <div class="card">
-        <h2>🔑 Licencia</h2>
-        <input id="licenseKey" placeholder="XXXXXXXX-XXXXXXX-XXXXXXXX">
-        <button onclick="validarLicencia()">✅ Validar</button>
-        <p class="info" id="licencia-detalle">--</p>
-    </div>
-
-    <div class="card">
-        <h2>🔥 Prewarm Global</h2>
-        <button class="secondary" onclick="prewarm('global')">🔥 Enviar Prewarm a Todas las Zonas</button>
-    </div>
-
-    <!-- Historial de respuestas -->
-    <div class="card">
-        <h2>📈 Últimas respuestas</h2>
-        <p class="info">Cuando el bot responde "Y", aparece aquí.</p>
-        <div id="historial" style="margin-top: 12px; max-height: 300px; overflow-y: auto;">Cargando...</div>
-    </div>
-
-    <!-- Detecciones de grupos -->
-    <div class="card">
-        <h2>🔍 Grupos Detectados</h2>
-        <p class="info">
-            Manda un mensaje con un punto <b>"."</b> en cualquier grupo donde esté el bot.
-            Aparecerá aquí con su nombre para que lo agregues a una zona.
-        </p>
-        <div id="detectados" style="margin-top: 12px;">Cargando...</div>
-        <button class="gray" onclick="limpiarDetectados()" style="margin-top: 8px;">🗑️ Limpiar Lista</button>
-    </div>
-
-    <!-- Buscador -->
-    <div class="buscador-container">
-        <input id="buscar" placeholder="🔍 Buscar grupo, número o keyword...">
-    </div>
-
-    <h2 style="margin-top:20px;">🗺️ Zonas</h2>
-    <button class="secondary" onclick="nuevaZona()" style="margin-bottom:12px;">➕ Nueva Zona</button>
-    <div id="zonas-container"></div>
-
-    <!-- Modal para copiar entre zonas -->
+    <!-- Modal copiar -->
     <div class="modal-overlay" id="modal-copiar">
         <div class="modal">
             <h3>📋 Copiar a otra zona</h3>
-            <p class="info" id="modal-copiar-valor" style="word-break:break-all;"></p>
+            <p class="info" id="modal-copiar-valor" style="word-break:break-all; color: var(--accent); font-family: monospace;"></p>
 
             <label>Zona destino:</label>
             <select id="modal-copiar-zona"></select>
@@ -497,8 +858,10 @@
             const t = document.getElementById('toast');
             t.textContent = msg;
             t.className = 'toast' + (error ? ' error' : '');
-            t.style.display = 'block';
-            setTimeout(() => t.style.display = 'none', 2500);
+            t.classList.add('show');
+            setTimeout(() => {
+                t.classList.remove('show');
+            }, 2800);
         }
 
         async function cargarTodo() {
@@ -517,7 +880,7 @@
                 if (avisoBotActivo) ocultarAvisoBot();
 
                 const el = document.getElementById('estado-conexion');
-                el.textContent = d.conectado ? 'CONECTADO' : 'DESCONECTADO';
+                el.textContent = d.conectado ? '● CONECTADO' : '● DESCONECTADO';
                 el.className = 'status ' + (d.conectado ? 'on' : 'off');
 
                 document.getElementById('numero-info').textContent = 'Número: ' + (d.numeroConectado || '--');
@@ -548,7 +911,7 @@
                 if (fallosConsecutivos >= MAX_FALLOS_ANTES_DE_AVISO) {
                     mostrarAvisoBot();
                     const el = document.getElementById('estado-conexion');
-                    el.textContent = 'SIN RESPUESTA';
+                    el.textContent = '● SIN RESPUESTA';
                     el.className = 'status off';
                 }
             }
@@ -562,16 +925,16 @@
             aviso.id = 'aviso-bot';
             aviso.style.cssText = `
                 position: fixed;
-                top: 16px; left: 16px; right: 80px;
-                background: linear-gradient(135deg, #ef4444, #dc2626);
-                color: #fff; padding: 14px 16px; border-radius: 12px;
+                top: 80px; left: 16px; right: 16px;
+                background: linear-gradient(135deg, var(--red), #dc2626);
+                color: #fff; padding: 16px; border-radius: 14px;
                 font-weight: 600; z-index: 2000;
                 display: flex; justify-content: space-between; align-items: center;
-                box-shadow: 0 8px 24px rgba(239, 68, 68, 0.5);
+                box-shadow: 0 10px 30px rgba(239, 68, 68, 0.5);
                 animation: slideDown 0.3s ease;
             `;
             aviso.innerHTML = `
-                <div style="display:flex;flex-direction:column;gap:2px;flex:1;">
+                <div style="display:flex;flex-direction:column;gap:3px;flex:1;">
                     <span style="font-size:14px;">⚠️ El bot no responde</span>
                     <span style="font-size:11px;opacity:0.9;font-weight:400;">Reinicia el bot para solucionarlo.</span>
                 </div>
@@ -653,11 +1016,11 @@
                 <div class="lista-item">
                     <div class="item-info">
                         ${tieneAlias ? `<b>${escapeHtml(alias)}</b>` : ''}
-                        <small style="${tieneAlias ? '' : 'opacity:0.9; font-size:11px;'}">${escapeHtml(valor)}</small>
+                        <small style="${tieneAlias ? '' : 'opacity:0.9; font-size:12px;'}">${escapeHtml(valor)}</small>
                     </div>
-                    <button class="copy" onclick="abrirModalCopiar('${escapeHtml(valor)}')">📋</button>
-                    <button class="edit" onclick="relabel('${escapeHtml(valor)}')">✏️</button>
-                    <button onclick="quitar('${zonaKey}','${tipo}','${escapeHtml(valor)}')">🗑️</button>
+                    <button class="copy" onclick="abrirModalCopiar('${escapeHtml(valor)}')" title="Copiar a otra zona">📋</button>
+                    <button class="edit" onclick="relabel('${escapeHtml(valor)}')" title="Renombrar">✏️</button>
+                    <button onclick="quitar('${zonaKey}','${tipo}','${escapeHtml(valor)}')" title="Eliminar">🗑️</button>
                 </div>
             `;
         }
@@ -668,23 +1031,26 @@
 
             for (const [key, z] of Object.entries(zonas)) {
                 const activa = z.botActive ? 'activa' : '';
-                const estado = z.botActive ? '🟢 ACTIVA' : '🔴 INACTIVA';
+                const estado = z.botActive ? '● ACTIVA' : '● INACTIVA';
 
                 html += `
                 <div class="card zona ${activa}">
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-                        <h3 style="margin:0;">${escapeHtml(z.nombre)}</h3>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+                        <h3 style="margin:0;font-size:18px;">${escapeHtml(z.nombre)}</h3>
                         <span class="status ${z.botActive ? 'on' : 'off'}">${estado}</span>
                     </div>
 
-                    <button class="${z.botActive ? 'danger' : ''}" onclick="toggleZona('${key}')">
-                        ${z.botActive ? '🔴 Desactivar' : '🟢 Activar'}
-                    </button>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+                        <button class="${z.botActive ? 'danger' : ''}" onclick="toggleZona('${key}')" style="flex:1;">
+                            ${z.botActive ? '🔴 Desactivar' : '🟢 Activar'}
+                        </button>
+                        <button class="secondary" onclick="prewarm('${key}')" style="flex:1;">🔥 Prewarm</button>
+                    </div>
 
-                    <button class="secondary" onclick="prewarm('${key}')">🔥 Prewarm Zona</button>
-
-                    <button class="gray small" onclick="renombrar('${key}')">✏️ Renombrar</button>
-                    <button class="danger small" onclick="eliminarZona('${key}')">🗑️ Eliminar Zona</button>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">
+                        <button class="gray small" onclick="renombrar('${key}')">✏️ Renombrar</button>
+                        <button class="danger small" onclick="eliminarZona('${key}')">🗑️ Eliminar Zona</button>
+                    </div>
 
                     <h4>📋 Grupos Imágenes (${z.imageGroups.length})</h4>
                     ${z.imageGroups.map(g => itemLista(g, key, 'image_groups')).join('') || '<p class="info">(vacío)</p>'}
@@ -706,7 +1072,7 @@
                     ${z.keywords.map(k => `
                         <div class="lista-item">
                             <div class="item-info">
-                                <small style="opacity:0.9; font-size:11px;">${escapeHtml(k)}</small>
+                                <small style="opacity:0.9; font-size:12px;">${escapeHtml(k)}</small>
                             </div>
                             <button onclick="quitar('${key}','keywords','${escapeHtml(k)}')">🗑️</button>
                         </div>
@@ -1132,7 +1498,7 @@
                             <button onclick="aplicarDetectado('${d.jid}', null, 'keyword_groups', 'zona-${idLimpio}')">
                                 ➕ Keywords
                             </button>
-                            <button class="secondary" onclick="relabel('${d.jid}')" style="flex: 0 0 auto; min-width: 40px;">✏️</button>
+                            <button class="secondary" onclick="relabel('${d.jid}')" style="flex: 0 0 auto; min-width: 50px;">✏️</button>
                         </div>
                         ${d.numero ? `
                         <div class="acciones">
@@ -1254,22 +1620,22 @@
                 bottom: 16px;
                 left: 16px;
                 right: 16px;
-                background: linear-gradient(135deg, #22c55e, #16a34a);
+                background: linear-gradient(135deg, #10b981, #059669);
                 color: #fff;
-                padding: 14px 16px;
-                border-radius: 12px;
+                padding: 16px;
+                border-radius: 14px;
                 font-weight: 600;
                 z-index: 1000;
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
-                box-shadow: 0 8px 24px rgba(34, 197, 94, 0.4);
+                box-shadow: 0 10px 30px rgba(16, 185, 129, 0.4);
                 animation: slideUp 0.3s ease;
             `;
             banner.innerHTML = `
-                <div style="display:flex;flex-direction:column;gap:2px;">
-                    <span style="font-size:14px;">📲 Instalar BotClientes</span>
-                    <span style="font-size:11px;opacity:0.85;font-weight:400;">Accede más rápido desde tu pantalla</span>
+                <div style="display:flex;flex-direction:column;gap:3px;">
+                    <span style="font-size:15px;">📲 Instalar BotClientes</span>
+                    <span style="font-size:12px;opacity:0.85;font-weight:400;">Accede más rápido desde tu pantalla</span>
                 </div>
                 <div style="display:flex;gap:8px;">
                     <button onclick="instalarPWA()" style="
