@@ -360,7 +360,7 @@ async function prewarmZona(zonaKey) {
                 continue;
             }
 
-            if (!primera) await new Promise(r => setTimeout(r, 400));
+            if (!primera) await new Promise(r => setTimeout(r, 4000));
             primera = false;
             try {
                 await sock.sendMessage(g, { text: '.' });
@@ -393,7 +393,7 @@ async function prewarmGlobal() {
             continue;
         }
 
-        if (!primera) await new Promise(r => setTimeout(r, 400));
+        if (!primera) await new Promise(r => setTimeout(r, 4000));
         primera = false;
         try {
             await sock.sendMessage(g, { text: '.' });
