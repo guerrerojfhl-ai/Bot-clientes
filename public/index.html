@@ -16,7 +16,7 @@
 
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        
+
         :root {
             --bg-primary: #0f1419;
             --bg-secondary: #1a1f2e;
@@ -68,7 +68,6 @@
             min-height: 100vh;
         }
 
-        /* Header */
         .header {
             position: sticky;
             top: 0;
@@ -83,17 +82,8 @@
             backdrop-filter: blur(10px);
         }
 
-        .header-left {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .header-logo {
-            font-size: 28px;
-            line-height: 1;
-        }
-
+        .header-left { display: flex; align-items: center; gap: 10px; }
+        .header-logo { font-size: 28px; line-height: 1; }
         .header-title {
             font-size: 16px;
             font-weight: 700;
@@ -102,77 +92,44 @@
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
-
-        .header-subtitle {
-            font-size: 11px;
-            color: var(--text-muted);
-            margin-top: -2px;
-        }
-
-        .header-actions {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
+        .header-subtitle { font-size: 11px; color: var(--text-muted); margin-top: -2px; }
+        .header-actions { display: flex; gap: 8px; align-items: center; }
 
         .btn-icon {
-            width: 40px;
-            height: 40px;
+            width: 40px; height: 40px;
             border-radius: 10px;
             background: var(--bg-card);
             border: 1px solid var(--border);
             color: var(--text-primary);
             font-size: 18px;
             cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            display: flex; align-items: center; justify-content: center;
             transition: all 0.2s ease;
-            padding: 0;
-            margin: 0;
+            padding: 0; margin: 0;
         }
+        .btn-icon:hover { background: var(--bg-hover); border-color: var(--accent); transform: translateY(-1px); }
+        .btn-icon:active { transform: scale(0.95); }
 
-        .btn-icon:hover {
-            background: var(--bg-hover);
-            border-color: var(--accent);
-            transform: translateY(-1px);
-        }
-
-        .btn-icon:active {
-            transform: scale(0.95);
-        }
-
-        /* Contenedor principal */
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 16px;
-        }
+        .container { max-width: 900px; margin: 0 auto; padding: 16px; }
 
         h1 { font-size: 24px; margin-bottom: 16px; }
-        h2 { 
-            font-size: 14px; 
-            margin-bottom: 12px; 
-            color: var(--text-secondary); 
+        h2 {
+            font-size: 14px; margin-bottom: 12px;
+            color: var(--text-secondary);
             text-transform: uppercase;
             letter-spacing: 0.5px;
             font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 6px;
+            display: flex; align-items: center; gap: 6px;
         }
         h3 { font-size: 16px; margin-bottom: 8px; font-weight: 600; }
-        h4 { 
-            font-size: 12px; 
-            margin-top: 16px; 
-            margin-bottom: 8px; 
+        h4 {
+            font-size: 12px; margin-top: 16px; margin-bottom: 8px;
             color: var(--text-muted);
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.3px;
         }
 
-        /* Cards */
         .card {
             background: var(--bg-card);
             border-radius: 14px;
@@ -182,31 +139,23 @@
             box-shadow: var(--shadow-sm);
             transition: all 0.2s ease;
         }
-
-        .card:hover {
-            box-shadow: var(--shadow-md);
-        }
-
-        .card.alert { 
-            border-color: var(--yellow); 
+        .card:hover { box-shadow: var(--shadow-md); }
+        .card.alert {
+            border-color: var(--yellow);
             background: linear-gradient(135deg, var(--bg-card), rgba(245, 158, 11, 0.05));
         }
-
-        .card.pairing { 
-            border-color: var(--accent); 
+        .card.pairing {
+            border-color: var(--accent);
             background: linear-gradient(135deg, var(--bg-card), rgba(16, 185, 129, 0.08));
             box-shadow: 0 0 24px var(--accent-glow);
         }
-
         .card.zona { border-color: var(--border); }
-        
-        .card.zona.activa { 
-            border-color: var(--accent); 
+        .card.zona.activa {
+            border-color: var(--accent);
             background: linear-gradient(135deg, var(--bg-card), rgba(16, 185, 129, 0.06));
             box-shadow: 0 0 20px var(--accent-glow);
         }
 
-        /* Inputs */
         input, textarea, select {
             width: 100%;
             padding: 11px 14px;
@@ -219,18 +168,13 @@
             font-family: inherit;
             transition: all 0.2s ease;
         }
-
         input:focus, textarea:focus, select:focus {
             outline: none;
             border-color: var(--accent);
             box-shadow: 0 0 0 3px var(--accent-glow);
         }
+        input::placeholder { color: var(--text-muted); }
 
-        input::placeholder {
-            color: var(--text-muted);
-        }
-
-        /* Botones */
         button {
             padding: 12px 16px;
             background: var(--accent);
@@ -243,22 +187,11 @@
             font-size: 14px;
             margin-bottom: 8px;
             transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            display: flex; align-items: center; justify-content: center;
             gap: 6px;
         }
-
-        button:hover {
-            background: var(--accent-hover);
-            transform: translateY(-1px);
-            box-shadow: var(--shadow-md);
-        }
-
-        button:active { 
-            transform: scale(0.98) translateY(0);
-        }
-
+        button:hover { background: var(--accent-hover); transform: translateY(-1px); box-shadow: var(--shadow-md); }
+        button:active { transform: scale(0.98) translateY(0); }
         button.danger { background: var(--red); }
         button.danger:hover { background: #dc2626; }
         button.secondary { background: var(--blue); }
@@ -267,15 +200,14 @@
         button.warning:hover { background: #d97706; }
         button.gray { background: var(--bg-hover); color: var(--text-primary); border: 1px solid var(--border); }
         button.gray:hover { background: var(--border); }
-        button.small { 
-            padding: 8px 12px; 
-            font-size: 12px; 
-            width: auto; 
-            display: inline-flex; 
-            margin: 4px 2px; 
+        button.small {
+            padding: 8px 12px;
+            font-size: 12px;
+            width: auto;
+            display: inline-flex;
+            margin: 4px 2px;
         }
 
-        /* Status */
         .status {
             display: inline-flex;
             align-items: center;
@@ -287,22 +219,13 @@
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
-
-        .status.on { 
-            background: var(--accent); 
-            color: #000;
-            box-shadow: 0 0 12px var(--accent-glow);
-        }
-        .status.off { 
-            background: var(--red); 
-            color: #fff;
-        }
+        .status.on { background: var(--accent); color: #000; box-shadow: 0 0 12px var(--accent-glow); }
+        .status.off { background: var(--red); color: #fff; }
 
         .info { font-size: 13px; color: var(--text-secondary); margin-top: 6px; }
         .info.warn { color: var(--yellow); font-weight: 600; }
         .info.ok { color: var(--accent); font-weight: 600; }
 
-        /* Toast */
         .toast {
             position: fixed;
             bottom: 24px;
@@ -321,15 +244,9 @@
             transition: all 0.3s ease;
             pointer-events: none;
         }
-
-        .toast.show {
-            transform: translateX(-50%) translateY(0);
-            opacity: 1;
-        }
-
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
         .toast.error { background: var(--red); color: #fff; }
 
-        /* Pairing code */
         .pairing-code {
             font-size: 36px;
             font-weight: 800;
@@ -347,12 +264,8 @@
             box-shadow: 0 0 24px var(--accent-glow);
             transition: all 0.2s ease;
         }
+        .pairing-code:hover { transform: scale(1.02); }
 
-        .pairing-code:hover {
-            transform: scale(1.02);
-        }
-
-        /* Lista items */
         .lista-item {
             display: flex;
             justify-content: space-between;
@@ -367,28 +280,22 @@
             border: 1px solid var(--border);
             transition: all 0.2s ease;
         }
-
-        .lista-item:hover {
-            border-color: var(--border-light);
-            background: var(--bg-hover);
-        }
-
+        .lista-item:hover { border-color: var(--border-light); background: var(--bg-hover); }
         .lista-item .item-info { flex: 1; word-break: break-all; }
-        .lista-item .item-info b { 
-            display: block; 
-            font-family: -apple-system, system-ui, sans-serif; 
-            font-size: 13px; 
+        .lista-item .item-info b {
+            display: block;
+            font-family: -apple-system, system-ui, sans-serif;
+            font-size: 13px;
             font-weight: 600;
             color: var(--text-primary);
             margin-bottom: 2px;
         }
-        .lista-item .item-info small { 
-            display: block; 
-            opacity: 0.7; 
-            font-size: 11px; 
+        .lista-item .item-info small {
+            display: block;
+            opacity: 0.7;
+            font-size: 11px;
             color: var(--text-muted);
         }
-        
         .lista-item button {
             width: auto;
             padding: 6px 10px;
@@ -397,17 +304,15 @@
             background: var(--red);
             flex-shrink: 0;
         }
-
         .lista-item button.edit { background: var(--blue); }
         .lista-item button.copy { background: var(--purple); }
 
-        /* 🔤 Keywords más visibles */
+        /* Keywords más visibles */
         .lista-item.keyword-item {
             background: rgba(16, 185, 129, 0.12);
             border-left: 4px solid var(--accent);
             padding: 12px 14px;
         }
-
         .lista-item.keyword-item .item-info small {
             opacity: 1;
             color: var(--text-primary);
@@ -416,17 +321,21 @@
             letter-spacing: 0.3px;
             text-shadow: 0 1px 2px rgba(0,0,0,0.4);
         }
+        body.light .lista-item.keyword-item { background: rgba(16, 185, 129, 0.1); }
+        body.light .lista-item.keyword-item .item-info small { color: #0f172a; text-shadow: none; }
 
-        body.light .lista-item.keyword-item {
-            background: rgba(16, 185, 129, 0.1);
+        /* Items calentados */
+        .lista-item.calentado {
+            border-left: 4px solid var(--accent);
+            background: rgba(16, 185, 129, 0.08);
         }
 
-        body.light .lista-item.keyword-item .item-info small {
-            color: #0f172a;
-            text-shadow: none;
+        /* Items fríos */
+        .lista-item.frio {
+            border-left: 4px solid var(--blue);
+            opacity: 0.75;
         }
 
-        /* Detectados */
         .detectado {
             background: var(--bg-input);
             border: 1px solid var(--border);
@@ -436,11 +345,7 @@
             font-size: 13px;
             transition: all 0.2s ease;
         }
-
-        .detectado:hover {
-            border-color: var(--border-light);
-        }
-
+        .detectado:hover { border-color: var(--border-light); }
         .detectado .jid {
             font-family: 'SF Mono', Monaco, ui-monospace, monospace;
             color: var(--accent);
@@ -448,15 +353,13 @@
             word-break: break-all;
             margin-bottom: 6px;
         }
-
-        .detectado .jid small { 
-            display: block; 
-            opacity: 0.6; 
-            font-size: 10px; 
-            margin-top: 3px; 
+        .detectado .jid small {
+            display: block;
+            opacity: 0.6;
+            font-size: 10px;
+            margin-top: 3px;
             color: var(--text-muted);
         }
-
         .detectado .nombre-grupo {
             font-family: -apple-system, system-ui, sans-serif;
             color: var(--blue);
@@ -467,20 +370,17 @@
             align-items: center;
             gap: 4px;
         }
-
         .detectado .meta {
             color: var(--text-muted);
             font-size: 12px;
             margin-bottom: 10px;
         }
-
         .detectado .acciones {
             display: flex;
             gap: 6px;
             flex-wrap: wrap;
             margin-top: 8px;
         }
-
         .detectado button {
             padding: 8px 12px;
             font-size: 12px;
@@ -491,7 +391,6 @@
             flex: 1;
             min-width: 90px;
         }
-
         .detectado select {
             padding: 8px 12px;
             font-size: 13px;
@@ -499,7 +398,6 @@
             margin-bottom: 8px;
         }
 
-        /* Badges */
         .badge {
             display: inline-flex;
             align-items: center;
@@ -511,11 +409,9 @@
             text-transform: uppercase;
             letter-spacing: 0.3px;
         }
-
-        .badge.ok { 
-            background: var(--accent); 
-            color: #000;
-        }
+        .badge.ok { background: var(--accent); color: #000; }
+        .badge.info { background: var(--blue); color: #fff; }
+        .badge.warn { background: var(--yellow); color: #000; }
 
         .vacio {
             text-align: center;
@@ -524,7 +420,6 @@
             font-size: 14px;
         }
 
-        /* Modal */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -536,16 +431,8 @@
             justify-content: center;
             padding: 16px;
         }
-
-        .modal-overlay.active { 
-            display: flex;
-            animation: fadeIn 0.2s ease;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
+        .modal-overlay.active { display: flex; animation: fadeIn 0.2s ease; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
         .modal {
             background: var(--bg-card);
@@ -559,40 +446,26 @@
             box-shadow: var(--shadow-lg);
             animation: slideUp 0.3s ease;
         }
-
-        .modal h3 { 
-            margin-bottom: 16px; 
-            color: var(--accent);
-            font-size: 18px;
-        }
-
-        .modal label { 
-            display: block; 
-            font-size: 12px; 
-            color: var(--text-secondary); 
-            margin-bottom: 6px; 
+        .modal h3 { margin-bottom: 16px; color: var(--accent); font-size: 18px; }
+        .modal label {
+            display: block;
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
             margin-top: 14px;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.3px;
         }
-
-        .modal .modal-actions { 
-            display: flex; 
-            gap: 10px; 
-            margin-top: 20px; 
-        }
-
+        .modal .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
         .modal .modal-actions button { flex: 1; }
 
-        /* Stats grid */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
             gap: 12px;
             margin-top: 14px;
         }
-
         .stat-box {
             background: var(--bg-input);
             padding: 16px;
@@ -601,19 +474,13 @@
             border: 1px solid var(--border);
             transition: all 0.2s ease;
         }
-
-        .stat-box:hover {
-            border-color: var(--accent);
-            transform: translateY(-2px);
-        }
-
+        .stat-box:hover { border-color: var(--accent); transform: translateY(-2px); }
         .stat-box .num {
             font-size: 28px;
             font-weight: 800;
             color: var(--accent);
             line-height: 1.1;
         }
-
         .stat-box .label {
             font-size: 11px;
             color: var(--text-muted);
@@ -623,12 +490,7 @@
             font-weight: 600;
         }
 
-        /* Buscador */
-        .buscador-container {
-            margin-bottom: 16px;
-            position: relative;
-        }
-
+        .buscador-container { margin-bottom: 16px; position: relative; }
         .buscador-container input {
             background: var(--bg-card);
             border: 2px solid var(--border);
@@ -637,23 +499,17 @@
             margin-bottom: 0;
             border-radius: 12px;
         }
-
-        .buscador-container input:focus {
-            border-color: var(--accent);
-        }
-
+        .buscador-container input:focus { border-color: var(--accent); }
         .buscador-container::before {
             content: '🔍';
             position: absolute;
-            left: 16px;
-            top: 50%;
+            left: 16px; top: 50%;
             transform: translateY(-50%);
             font-size: 16px;
             pointer-events: none;
             z-index: 1;
         }
 
-        /* Historial */
         .historial-item {
             padding: 10px 12px;
             background: var(--bg-input);
@@ -663,50 +519,42 @@
             border-left: 3px solid var(--accent);
             transition: all 0.2s ease;
         }
+        .historial-item:hover { background: var(--bg-hover); }
+        .historial-item .tiempo { color: var(--text-muted); font-size: 11px; }
+        .historial-item .zona { color: var(--blue); font-weight: 700; }
 
-        .historial-item:hover {
-            background: var(--bg-hover);
+        /* Barra de progreso de calentamiento */
+        .barra-calentamiento {
+            margin-top: 12px;
+            height: 8px;
+            background: var(--bg-input);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .barra-progreso {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), var(--yellow));
+            width: 0%;
+            transition: width 0.5s ease;
         }
 
-        .historial-item .tiempo { 
-            color: var(--text-muted); 
-            font-size: 11px; 
-        }
-
-        .historial-item .zona { 
-            color: var(--blue); 
-            font-weight: 700; 
-        }
-
-        /* Animaciones */
         @keyframes slideUp {
             from { transform: translateY(30px); opacity: 0; }
             to { transform: translateY(0); opacity: 1; }
         }
-
         @keyframes slideDown {
             from { transform: translateY(-100px); opacity: 0; }
             to { transform: translateY(0); opacity: 1; }
         }
 
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
         .card { animation: fadeIn 0.4s ease; }
 
-        /* PWA mode */
         body.pwa-mode {
             padding-top: max(0px, env(safe-area-inset-top));
             padding-bottom: max(40px, env(safe-area-inset-bottom));
         }
+        body.pwa-mode .header { padding-top: max(12px, env(safe-area-inset-top)); }
 
-        body.pwa-mode .header {
-            padding-top: max(12px, env(safe-area-inset-top));
-        }
-
-        /* Responsive */
         @media (max-width: 480px) {
             .header-title { font-size: 14px; }
             .header-logo { font-size: 24px; }
@@ -718,7 +566,6 @@
     </style>
 </head>
 <body>
-    <!-- Header -->
     <header class="header">
         <div class="header-left">
             <div class="header-logo">🤖</div>
@@ -734,7 +581,16 @@
     </header>
 
     <div class="container">
-        <!-- Dashboard de estadísticas -->
+        <!-- Aviso de calentamiento global -->
+        <div class="card" id="aviso-calentamiento">
+            <h2>🔥 Estado de Calentamiento</h2>
+            <p class="info" id="aviso-texto">Cargando...</p>
+            <div class="barra-calentamiento">
+                <div class="barra-progreso" id="barra-progreso"></div>
+            </div>
+        </div>
+
+        <!-- Dashboard -->
         <div class="card">
             <h2>📊 Resumen</h2>
             <div class="stats-grid">
@@ -765,7 +621,7 @@
             <p class="info" id="licencia-info">Licencia: --</p>
         </div>
 
-        <!-- Pairing code -->
+        <!-- Pairing -->
         <div class="card pairing" id="pairing-card" style="display:none;">
             <h2>🔑 Código de Vinculación</h2>
             <p class="info">Copia el código y mételo en WhatsApp:</p>
@@ -796,6 +652,21 @@
         <div class="card">
             <h2>🔥 Prewarm Global</h2>
             <button class="secondary" onclick="prewarm('global')">🔥 Enviar Prewarm a Todas las Zonas</button>
+        </div>
+
+        <!-- Grupos calentados y fríos -->
+        <div class="card" id="card-grupos-calentamiento">
+            <h2>🔥 Grupos Calentados y Fríos</h2>
+            <p class="info">
+                Los grupos "calentados" recibieron un "." en los últimos 30 min y están listos.
+                Los "fríos" necesitan un prewarm para calentarse.
+            </p>
+
+            <h4 style="margin-top: 16px;">🔥 Calentados (<span id="count-calentados">0</span>)</h4>
+            <div id="lista-calentados" style="margin-top: 8px; max-height: 400px; overflow-y: auto;">Cargando...</div>
+
+            <h4 style="margin-top: 16px;">❄️ Fríos (<span id="count-frios">0</span>)</h4>
+            <div id="lista-frios" style="margin-top: 8px; max-height: 400px; overflow-y: auto;">Cargando...</div>
         </div>
 
         <!-- Historial -->
@@ -893,6 +764,7 @@
             await cargarStatus();
             await cargarConfig();
             await cargarHistorial();
+            await cargarEstadoCalentamiento();
         }
 
         async function cargarStatus() {
@@ -986,6 +858,7 @@
                 labels = d.labels || {};
                 renderZonas();
                 actualizarStats();
+                cargarEstadoCalentamiento();
             } catch (e) { console.error(e); }
         }
 
@@ -1003,21 +876,108 @@
             document.getElementById('stat-activas').textContent = activas;
         }
 
+        // ==================== CALENTAMIENTO ====================
+        async function cargarEstadoCalentamiento() {
+            try {
+                const r = await fetch('/api/prewarms/estado');
+                const data = await r.json();
+
+                const total = data.totalGrupos;
+                const calentados = data.calentados;
+                const frios = data.frios;
+                const ttl = data.ttlMinutos;
+                const porcentaje = total > 0 ? Math.round((calentados / total) * 100) : 0;
+
+                const avisoTexto = document.getElementById('aviso-texto');
+                const barraProgreso = document.getElementById('barra-progreso');
+                const avisoCard = document.getElementById('aviso-calentamiento');
+
+                if (total === 0) {
+                    avisoTexto.innerHTML = 'No hay grupos configurados todavía.';
+                    barraProgreso.style.width = '0%';
+                    avisoCard.style.borderColor = 'var(--border)';
+                    avisoCard.style.background = 'var(--bg-card)';
+                } else if (calentados === total) {
+                    avisoTexto.innerHTML = `✅ <b>Todos los servidores están calentados</b> (${calentados}/${total} grupos). Los mensajes se enviarán rápido.`;
+                    barraProgreso.style.width = '100%';
+                    avisoCard.style.borderColor = 'var(--accent)';
+                    avisoCard.style.background = 'linear-gradient(135deg, var(--bg-card), rgba(16, 185, 129, 0.1))';
+                } else if (calentados === 0) {
+                    avisoTexto.innerHTML = `❄️ <b>Ningún servidor está calentado</b> (0/${total} grupos). Haz un prewarm para calentarlos.`;
+                    barraProgreso.style.width = '0%';
+                    avisoCard.style.borderColor = 'var(--blue)';
+                    avisoCard.style.background = 'linear-gradient(135deg, var(--bg-card), rgba(59, 130, 246, 0.1))';
+                } else {
+                    avisoTexto.innerHTML = `⚠️ <b>Solo ${calentados}/${total} grupos calentados</b> (${porcentaje}%). Haz prewarm para los ${frios} grupos restantes.`;
+                    barraProgreso.style.width = porcentaje + '%';
+                    avisoCard.style.borderColor = 'var(--yellow)';
+                    avisoCard.style.background = 'linear-gradient(135deg, var(--bg-card), rgba(245, 158, 11, 0.1))';
+                }
+
+                document.getElementById('count-calentados').textContent = calentados;
+                const listaCalentados = document.getElementById('lista-calentados');
+                if (data.listaCalentados.length === 0) {
+                    listaCalentados.innerHTML = '<p class="info">(ninguno calentado todavía)</p>';
+                } else {
+                    listaCalentados.innerHTML = data.listaCalentados.map(g => {
+                        const min = Math.floor(g.expiraEn / 60);
+                        const seg = g.expiraEn % 60;
+                        const expiraTexto = min > 0 ? `${min}min ${seg}s` : `${seg}s`;
+
+                        const nombreGrupo = etiqueta(g.grupo);
+                        const tieneAlias = nombreGrupo !== g.grupo;
+
+                        return `
+                            <div class="lista-item calentado">
+                                <div class="item-info">
+                                    <b>🔥 ${escapeHtml(tieneAlias ? nombreGrupo : g.grupo)}</b>
+                                    <small>${tieneAlias ? escapeHtml(g.grupo) + '<br>' : ''}Zonas: ${g.zonas.map(z => escapeHtml(z)).join(', ')}</small>
+                                </div>
+                                <span class="badge ok" style="font-size:10px;">${expiraTexto}</span>
+                            </div>
+                        `;
+                    }).join('');
+                }
+
+                document.getElementById('count-frios').textContent = frios;
+                const listaFrios = document.getElementById('lista-frios');
+                if (data.listaFrios.length === 0) {
+                    listaFrios.innerHTML = '<p class="info">(todos calentados 🎉)</p>';
+                } else {
+                    listaFrios.innerHTML = data.listaFrios.map(g => {
+                        const nombreGrupo = etiqueta(g.grupo);
+                        const tieneAlias = nombreGrupo !== g.grupo;
+
+                        return `
+                            <div class="lista-item frio">
+                                <div class="item-info">
+                                    <b>❄️ ${escapeHtml(tieneAlias ? nombreGrupo : g.grupo)}</b>
+                                    <small>${tieneAlias ? escapeHtml(g.grupo) + '<br>' : ''}Zonas: ${g.zonas.map(z => escapeHtml(z)).join(', ')}</small>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+            } catch (e) {
+                console.error('Error cargando estado de calentamiento:', e);
+            }
+        }
+
         // ==================== BUSCADOR ====================
         function filtrarZonas() {
             const q = document.getElementById('buscar').value.toLowerCase().trim();
-            
+
             if (!q) {
                 document.querySelectorAll('.lista-item').forEach(i => i.style.display = '');
                 document.querySelectorAll('.card.zona').forEach(c => c.style.display = '');
                 return;
             }
-            
+
             document.querySelectorAll('.lista-item').forEach(item => {
                 const texto = item.textContent.toLowerCase();
                 item.style.display = texto.includes(q) ? '' : 'none';
             });
-            
+
             document.querySelectorAll('.card.zona').forEach(card => {
                 const items = card.querySelectorAll('.lista-item');
                 const hayVisibles = Array.from(items).some(i => i.style.display !== 'none');
@@ -1057,12 +1017,20 @@
             for (const [key, z] of Object.entries(zonas)) {
                 const activa = z.botActive ? 'activa' : '';
                 const estado = z.botActive ? '● ACTIVA' : '● INACTIVA';
+                const calentadosZona = z.calentados || 0;
+                const totalGruposZona = z.totalGrupos || 0;
+                const todosCalentados = totalGruposZona > 0 && calentadosZona === totalGruposZona;
 
                 html += `
                 <div class="card zona ${activa}">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
                         <h3 style="margin:0;font-size:18px;">${escapeHtml(z.nombre)}</h3>
-                        <span class="status ${z.botActive ? 'on' : 'off'}">${estado}</span>
+                        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+                            <span class="badge ${todosCalentados ? 'ok' : 'info'}" style="font-size: 11px; padding: 4px 10px;">
+                                🔥 ${calentadosZona}/${totalGruposZona}
+                            </span>
+                            <span class="status ${z.botActive ? 'on' : 'off'}">${estado}</span>
+                        </div>
                     </div>
 
                     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
@@ -1266,7 +1234,12 @@
                 });
                 const d = await r.json();
                 if (d.ok || d.total !== undefined) {
-                    toast(`🔥 ${d.enviados || 0} ok · ${d.fallidos || 0} fallidos`);
+                    let msg = `🔥 ${d.enviados || 0} enviados`;
+                    if (d.saltados > 0) msg += ` · ${d.saltados} saltados`;
+                    if (d.fallidos > 0) msg += ` · ${d.fallidos} fallidos`;
+                    toast(msg);
+                    await cargarEstadoCalentamiento();
+                    await cargarConfig();
                 } else {
                     toast('❌ ' + (d.error || 'Error'), true);
                 }
@@ -1281,7 +1254,7 @@
             document.getElementById('modal-copiar-valor').textContent = valor;
 
             const selectZona = document.getElementById('modal-copiar-zona');
-            selectZona.innerHTML = Object.entries(zonas).map(([key, z]) => 
+            selectZona.innerHTML = Object.entries(zonas).map(([key, z]) =>
                 `<option value="${key}">${escapeHtml(z.nombre)}</option>`
             ).join('');
 
@@ -1602,6 +1575,7 @@
                 cargarHistorial();
             }
         }, 5000);
+        setInterval(cargarEstadoCalentamiento, 15000);
     </script>
 
     <!-- Registro del Service Worker -->
