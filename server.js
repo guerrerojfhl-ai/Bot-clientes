@@ -98,7 +98,7 @@ function agregarHistorial(zonaKey, zonaNombre, grupo, numero, texto) {
     return item;
 }
 
-// ==================== GRUPOS PREWARMENTADOS ====================
+// ==================== GRUPOS PREWARMENTADOS (CALENTADOS) ====================
 const prewarmsRecientes = new Map();
 const PREWARM_TTL_MS = 30 * 60 * 1000; // 30 minutos
 const BOT_INSTANCE_ID = Date.now();
@@ -421,7 +421,6 @@ async function reiniciarBot() {
             fs.rmSync(SESSION_DIR, { recursive: true, force: true });
         }
 
-        // 🔧 Limpiar prewarms al reiniciar
         limpiarTodosLosPrewarms();
 
         pairingCodeActual = null;
@@ -455,7 +454,6 @@ async function obtenerVersion() {
 
 async function startBot() {
     try {
-        // 🔧 Limpiar prewarms al arrancar
         limpiarTodosLosPrewarms();
 
         const version = await obtenerVersion();
@@ -665,8 +663,16 @@ app.use(express.static(PUBLIC_DIR, {
 
 app.get('/api/config', (req, res) => {
     const d = cargarDinamico();
+    limpiarPrewarmsExpirados();
+
     const zonas = {};
     for (const [k, v] of Object.entries(CONFIG.ZONAS)) {
+        const gruposZona = new Set([...v.IMAGE_GROUPS, ...v.KEYWORD_GROUPS]);
+        let calentadosZona = 0;
+        for (const g of gruposZona) {
+            if (yaFuePrewarmed(g)) calentadosZona++;
+        }
+
         zonas[k] = {
             nombre: v.nombre,
             botActive: v.botActive,
@@ -675,6 +681,8 @@ app.get('/api/config', (req, res) => {
             keywordGroups: [...v.KEYWORD_GROUPS],
             keywordNumbers: [...v.KEYWORD_NUMBERS],
             keywords: v.KEYWORDS,
+            totalGrupos: gruposZona.size,
+            calentados: calentadosZona,
         };
     }
     res.json({ zonas, labels: d.labels });
@@ -829,7 +837,7 @@ app.post('/api/prewarm', async (req, res) => {
     res.json(r);
 });
 
-// 🔧 NUEVO: Consultar prewarms recientes
+// ==================== ESTADO DE CALENTAMIENTO ====================
 app.get('/api/prewarms', (req, res) => {
     limpiarPrewarmsExpirados();
     const ahora = Date.now();
@@ -842,6 +850,62 @@ app.get('/api/prewarms', (req, res) => {
         botInstanceId: BOT_INSTANCE_ID,
         total: lista.length,
         grupos: lista
+    });
+});
+
+app.get('/api/prewarms/estado', (req, res) => {
+    limpiarPrewarmsExpirados();
+    const ahora = Date.now();
+
+    const todosLosGrupos = new Map();
+
+    for (const [zonaKey, zona] of Object.entries(CONFIG.ZONAS)) {
+        const gruposZona = new Set([...zona.IMAGE_GROUPS, ...zona.KEYWORD_GROUPS]);
+        for (const g of gruposZona) {
+            if (!todosLosGrupos.has(g)) {
+                todosLosGrupos.set(g, {
+                    grupo: g,
+                    zonas: [],
+                    calentado: false,
+                    expiraEn: 0,
+                    hace: 0
+                });
+            }
+            todosLosGrupos.get(g).zonas.push(zona.nombre);
+        }
+    }
+
+    let calentados = 0;
+    const listaCalentados = [];
+    const listaFrios = [];
+
+    for (const [grupo, info] of todosLosGrupos) {
+        const ts = prewarmsRecientes.get(grupo);
+        if (ts) {
+            const transcurrido = ahora - ts;
+            if (transcurrido <= PREWARM_TTL_MS) {
+                info.calentado = true;
+                info.hace = Math.floor(transcurrido / 1000);
+                info.expiraEn = Math.max(0, Math.floor((PREWARM_TTL_MS - transcurrido) / 1000));
+                calentados++;
+                listaCalentados.push(info);
+                continue;
+            }
+        }
+        listaFrios.push(info);
+    }
+
+    listaCalentados.sort((a, b) => a.expiraEn - b.expiraEn);
+    listaFrios.sort((a, b) => a.grupo.localeCompare(b.grupo));
+
+    res.json({
+        botInstanceId: BOT_INSTANCE_ID,
+        ttlMinutos: Math.floor(PREWARM_TTL_MS / 60000),
+        totalGrupos: todosLosGrupos.size,
+        calentados,
+        frios: todosLosGrupos.size - calentados,
+        listaCalentados,
+        listaFrios
     });
 });
 
