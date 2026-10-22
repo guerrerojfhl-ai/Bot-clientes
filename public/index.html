@@ -106,9 +106,11 @@
             display: flex; align-items: center; justify-content: center;
             transition: all 0.2s ease;
             padding: 0; margin: 0;
+            position: relative;
         }
         .btn-icon:hover { background: var(--bg-hover); border-color: var(--accent); transform: translateY(-1px); }
         .btn-icon:active { transform: scale(0.95); }
+        .btn-icon.activo { border-color: var(--accent); box-shadow: 0 0 12px var(--accent-glow); }
 
         .container { max-width: 900px; margin: 0 auto; padding: 16px; }
 
@@ -307,7 +309,6 @@
         .lista-item button.edit { background: var(--blue); }
         .lista-item button.copy { background: var(--purple); }
 
-        /* Keywords más visibles */
         .lista-item.keyword-item {
             background: rgba(16, 185, 129, 0.12);
             border-left: 4px solid var(--accent);
@@ -324,13 +325,11 @@
         body.light .lista-item.keyword-item { background: rgba(16, 185, 129, 0.1); }
         body.light .lista-item.keyword-item .item-info small { color: #0f172a; text-shadow: none; }
 
-        /* Items calentados */
         .lista-item.calentado {
             border-left: 4px solid var(--accent);
             background: rgba(16, 185, 129, 0.08);
         }
 
-        /* Items fríos */
         .lista-item.frio {
             border-left: 4px solid var(--blue);
             opacity: 0.75;
@@ -523,7 +522,6 @@
         .historial-item .tiempo { color: var(--text-muted); font-size: 11px; }
         .historial-item .zona { color: var(--blue); font-weight: 700; }
 
-        /* Barra de progreso de calentamiento */
         .barra-calentamiento {
             margin-top: 12px;
             height: 8px;
@@ -575,13 +573,13 @@
             </div>
         </div>
         <div class="header-actions">
+            <button class="btn-icon" onclick="activarNotificaciones()" id="btn-notif" title="Activar notificaciones">🔕</button>
             <button class="btn-icon" onclick="toggleTema()" id="theme-toggle" title="Cambiar tema">🌙</button>
             <button class="btn-icon" onclick="cargarTodo()" title="Actualizar">🔄</button>
         </div>
     </header>
 
     <div class="container">
-        <!-- Aviso de calentamiento global -->
         <div class="card" id="aviso-calentamiento">
             <h2>🔥 Estado de Calentamiento</h2>
             <p class="info" id="aviso-texto">Cargando...</p>
@@ -590,7 +588,6 @@
             </div>
         </div>
 
-        <!-- Dashboard -->
         <div class="card">
             <h2>📊 Resumen</h2>
             <div class="stats-grid">
@@ -613,7 +610,6 @@
             </div>
         </div>
 
-        <!-- Estado del bot -->
         <div class="card">
             <h2>📊 Estado del Bot</h2>
             <p style="margin-bottom: 8px;">Conexión: <span id="estado-conexion" class="status off">DESCONECTADO</span></p>
@@ -621,7 +617,6 @@
             <p class="info" id="licencia-info">Licencia: --</p>
         </div>
 
-        <!-- Pairing -->
         <div class="card pairing" id="pairing-card" style="display:none;">
             <h2>🔑 Código de Vinculación</h2>
             <p class="info">Copia el código y mételo en WhatsApp:</p>
@@ -630,7 +625,6 @@
             <p class="info" style="text-align:center; color:var(--yellow);">⏱️ Expira en unos minutos</p>
         </div>
 
-        <!-- Configurar teléfono -->
         <div class="card alert">
             <h2>📞 Configurar Teléfono</h2>
             <p class="info">Formato: código de país + número (solo dígitos)</p>
@@ -640,7 +634,6 @@
             <button class="secondary" onclick="regenerarPairing()" style="margin-top: 8px;">🔄 Generar Código Nuevo</button>
         </div>
 
-        <!-- Licencia -->
         <div class="card">
             <h2>🔑 Licencia</h2>
             <input id="licenseKey" placeholder="XXXXXXXX-XXXXXXX-XXXXXXXX">
@@ -648,13 +641,11 @@
             <p class="info" id="licencia-detalle">--</p>
         </div>
 
-        <!-- Prewarm global -->
         <div class="card">
             <h2>🔥 Prewarm Global</h2>
             <button class="secondary" onclick="prewarm('global')">🔥 Enviar Prewarm a Todas las Zonas</button>
         </div>
 
-        <!-- Grupos calentados y fríos -->
         <div class="card" id="card-grupos-calentamiento">
             <h2>🔥 Grupos Calentados y Fríos</h2>
             <p class="info">
@@ -669,14 +660,12 @@
             <div id="lista-frios" style="margin-top: 8px; max-height: 400px; overflow-y: auto;">Cargando...</div>
         </div>
 
-        <!-- Historial -->
         <div class="card">
             <h2>📈 Últimas respuestas</h2>
             <p class="info">Cuando el bot responde "Y", aparece aquí.</p>
             <div id="historial" style="margin-top: 12px; max-height: 300px; overflow-y: auto;">Cargando...</div>
         </div>
 
-        <!-- Detecciones -->
         <div class="card">
             <h2>🔍 Grupos Detectados</h2>
             <p class="info">
@@ -687,18 +676,15 @@
             <button class="gray" onclick="limpiarDetectados()" style="margin-top: 8px;">🗑️ Limpiar Lista</button>
         </div>
 
-        <!-- Buscador -->
         <div class="buscador-container">
             <input id="buscar" placeholder="Buscar grupo, número o keyword...">
         </div>
 
-        <!-- Zonas -->
         <h2>🗺️ Zonas</h2>
         <button class="secondary" onclick="nuevaZona()" style="margin-bottom:12px;">➕ Nueva Zona</button>
         <div id="zonas-container"></div>
     </div>
 
-    <!-- Modal copiar -->
     <div class="modal-overlay" id="modal-copiar">
         <div class="modal">
             <h3>📋 Copiar a otra zona</h3>
@@ -760,6 +746,105 @@
             }, 2800);
         }
 
+        // ==================== NOTIFICACIONES ====================
+        function actualizarBotonNotif() {
+            const btn = document.getElementById('btn-notif');
+            if (!btn) return;
+
+            if (!('Notification' in window)) {
+                btn.textContent = '🔕';
+                btn.title = 'Tu navegador no soporta notificaciones';
+                btn.classList.remove('activo');
+                return;
+            }
+
+            if (Notification.permission === 'granted') {
+                btn.textContent = '🔔';
+                btn.title = 'Notificaciones activadas';
+                btn.classList.add('activo');
+            } else if (Notification.permission === 'denied') {
+                btn.textContent = '🔕';
+                btn.title = 'Notificaciones bloqueadas. Actívalas en ajustes del navegador';
+                btn.classList.remove('activo');
+            } else {
+                btn.textContent = '🔔';
+                btn.title = 'Toca para activar notificaciones';
+                btn.classList.remove('activo');
+            }
+        }
+
+        async function activarNotificaciones(silencioso = false) {
+            if (!('Notification' in window)) {
+                if (!silencioso) toast('❌ Tu navegador no soporta notificaciones', true);
+                actualizarBotonNotif();
+                return;
+            }
+
+            if (Notification.permission === 'granted') {
+                if (!silencioso) {
+                    try {
+                        new Notification('🤖 BotClientes', {
+                            body: 'Las notificaciones ya están activas',
+                            icon: '/icon-192.png',
+                            tag: 'test-notif'
+                        });
+                    } catch (e) {}
+                    toast('✅ Notificaciones ya activas');
+                }
+                actualizarBotonNotif();
+                return;
+            }
+
+            if (Notification.permission === 'denied') {
+                if (!silencioso) {
+                    toast('❌ Bloqueaste las notificaciones. Actívalas desde los ajustes del navegador', true);
+                }
+                actualizarBotonNotif();
+                return;
+            }
+
+            // Pedir permiso (esto SIEMPRE requiere interacción del usuario, pero lo intentamos al cargar)
+            try {
+                const permiso = await Notification.requestPermission();
+                
+                if (permiso === 'granted') {
+                    toast('✅ Notificaciones activadas');
+                    try {
+                        new Notification('🤖 BotClientes', {
+                            body: '¡Listo! Recibirás una notificación cuando el bot responda',
+                            icon: '/icon-192.png',
+                            tag: 'bienvenida'
+                        });
+                    } catch (e) {}
+                } else {
+                    if (!silencioso) toast('❌ No se activaron las notificaciones', true);
+                }
+            } catch (e) {
+                console.warn('Error pidiendo permiso de notificaciones:', e);
+            }
+            
+            actualizarBotonNotif();
+        }
+
+        function mostrarNotificacion(titulo, cuerpo) {
+            if (!('Notification' in window)) return;
+            if (Notification.permission !== 'granted') return;
+
+            try {
+                new Notification(titulo, {
+                    body: cuerpo,
+                    icon: '/icon-192.png',
+                    badge: '/icon-192.png',
+                    tag: 'bot-respuesta-' + Date.now(),
+                    requireInteraction: false,
+                    silent: false
+                });
+            } catch (e) {
+                console.warn('No se pudo mostrar notificación:', e);
+            }
+        }
+
+        // ==================== CARGA INICIAL ====================
         async function cargarTodo() {
             await cargarStatus();
             await cargarConfig();
@@ -1248,7 +1333,6 @@
             }
         }
 
-        // ==================== MODAL COPIAR ====================
         function abrirModalCopiar(valor) {
             modalCopiarValor = valor;
             document.getElementById('modal-copiar-valor').textContent = valor;
@@ -1381,7 +1465,15 @@
                     if (h.id > ultimoHistorialId && !historialNotificado.has(h.id)) {
                         if (ultimoHistorialId > 0) {
                             const numCorto = h.numero ? h.numero.slice(-4) : '????';
+                            
+                            // Toast
                             toast(`✅ Bot respondió en ${h.zonaNombre} (…${numCorto})`);
+                            
+                            // Notificación del sistema
+                            mostrarNotificacion(
+                                '🤖 Bot respondió',
+                                `En ${h.zonaNombre} al número …${numCorto}`
+                            );
                         }
                         historialNotificado.add(h.id);
                         if (h.id > ultimoHistorialId) ultimoHistorialId = h.id;
@@ -1562,9 +1654,25 @@
         cargarZonasLista().then(() => cargarDetectados());
 
         if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', conectarBuscador);
+            document.addEventListener('DOMContentLoaded', () => {
+                conectarBuscador();
+                actualizarBotonNotif();
+                // Intentar activar notificaciones automáticamente
+                if ('Notification' in window && Notification.permission === 'default') {
+                    // Esperar 2 segundos para que el usuario vea la página antes de pedir permiso
+                    setTimeout(() => {
+                        activarNotificaciones(true);
+                    }, 2000);
+                }
+            });
         } else {
             conectarBuscador();
+            actualizarBotonNotif();
+            if ('Notification' in window && Notification.permission === 'default') {
+                setTimeout(() => {
+                    activarNotificaciones(true);
+                }, 2000);
+            }
         }
 
         setInterval(cargarStatus, 5000);
@@ -1578,7 +1686,6 @@
         setInterval(cargarEstadoCalentamiento, 15000);
     </script>
 
-    <!-- Registro del Service Worker -->
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
@@ -1596,7 +1703,6 @@
         }
     </script>
 
-    <!-- Banner de instalación PWA -->
     <script>
         let deferredPrompt = null;
 
