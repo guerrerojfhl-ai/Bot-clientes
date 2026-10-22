@@ -42,18 +42,11 @@ if (!fs.existsSync(PUBLIC_DIR)) {
     console.log('📝 Carpeta public/ creada');
 }
 
-// ==================== CONFIG ZONAS ====================
+// ==================== CONFIG ZONAS (DINÁMICO) ====================
 const CONFIG = {
-    ZONAS: {
-        norte: { nombre: 'Norte', botActive: false, IMAGE_GROUPS: new Set([]), IMAGE_NUMBERS: new Set([]), KEYWORD_GROUPS: new Set([]), KEYWORD_NUMBERS: new Set([]), KEYWORDS: ['solicita', 'solicito'] },
-        centro: { nombre: 'Centro', botActive: false, IMAGE_GROUPS: new Set([]), IMAGE_NUMBERS: new Set([]), KEYWORD_GROUPS: new Set([]), KEYWORD_NUMBERS: new Set([]), KEYWORDS: ['solicita', 'solicito'] },
-        sur: { nombre: 'Sur', botActive: false, IMAGE_GROUPS: new Set([]), IMAGE_NUMBERS: new Set([]), KEYWORD_GROUPS: new Set([]), KEYWORD_NUMBERS: new Set([]), KEYWORDS: ['solicita', 'solicito'] },
-        zona4: { nombre: 'Zona 4', botActive: false, IMAGE_GROUPS: new Set([]), IMAGE_NUMBERS: new Set([]), KEYWORD_GROUPS: new Set([]), KEYWORD_NUMBERS: new Set([]), KEYWORDS: ['solicita', 'solicito'] },
-        zona5: { nombre: 'Zona 5', botActive: false, IMAGE_GROUPS: new Set([]), IMAGE_NUMBERS: new Set([]), KEYWORD_GROUPS: new Set([]), KEYWORD_NUMBERS: new Set([]), KEYWORDS: ['solicita', 'solicito'] },
-        zona6: { nombre: 'Zona 6', botActive: false, IMAGE_GROUPS: new Set([]), IMAGE_NUMBERS: new Set([]), KEYWORD_GROUPS: new Set([]), KEYWORD_NUMBERS: new Set([]), KEYWORDS: ['solicita', 'solicito'] },
-    },
+    ZONAS: {},  // 🔧 Se llena dinámicamente desde config-zonas.json
     Y: 'Y',
-    phoneNumber: '5216691231101',
+    phoneNumber: '',  // 🔧 Vacío por defecto (cada cliente pone el suyo)
 };
 
 // ==================== DETECCIONES ====================
@@ -119,41 +112,64 @@ let numeroConectado = null;
 // ==================== PERSISTENCIA ====================
 const LABELS = {};
 
+function crearEstructuraZona(nombre) {
+    return {
+        nombre: nombre,
+        botActive: false,
+        image_groups_extra: [], image_groups_removed: [],
+        image_numbers_extra: [], image_numbers_removed: [],
+        keyword_groups_extra: [], keyword_groups_removed: [],
+        keyword_numbers_extra: [], keyword_numbers_removed: [],
+        keywords_extra: [], keywords_removed: [],
+    };
+}
+
+function zonasPorDefecto() {
+    return {
+        norte: crearEstructuraZona('Norte'),
+        centro: crearEstructuraZona('Centro'),
+        sur: crearEstructuraZona('Sur'),
+        zona4: crearEstructuraZona('Zona 4'),
+        zona5: crearEstructuraZona('Zona 5'),
+        zona6: crearEstructuraZona('Zona 6'),
+    };
+}
+
 function estructuraVacia() {
-    const zonas = {};
-    for (const key of Object.keys(CONFIG.ZONAS)) {
-        zonas[key] = {
-            nombre: CONFIG.ZONAS[key].nombre,
-            botActive: false,
-            image_groups_extra: [], image_groups_removed: [],
-            image_numbers_extra: [], image_numbers_removed: [],
-            keyword_groups_extra: [], keyword_groups_removed: [],
-            keyword_numbers_extra: [], keyword_numbers_removed: [],
-            keywords_extra: [], keywords_removed: [],
-        };
-    }
-    return { zonas, labels: {}, licenseKey: '', phoneNumber: CONFIG.phoneNumber };
+    return {
+        zonas: {},
+        labels: {},
+        licenseKey: '',
+        phoneNumber: '',  // 🔧 Vacío por defecto
+    };
 }
 
 function cargarDinamico() {
     try {
         if (fs.existsSync(CONFIG_PATH)) {
             const d = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
-            const base = estructuraVacia();
             d.zonas = d.zonas || {};
-            for (const key of Object.keys(CONFIG.ZONAS)) {
-                if (!d.zonas[key]) d.zonas[key] = base.zonas[key];
-                else if (!d.zonas[key].nombre) d.zonas[key].nombre = CONFIG.ZONAS[key].nombre;
-            }
             d.labels = d.labels || {};
             d.licenseKey = d.licenseKey || '';
-            d.phoneNumber = d.phoneNumber || CONFIG.phoneNumber;
+            d.phoneNumber = d.phoneNumber || '';  // 🔧 Vacío si no existe
+            
+            // 🔧 Si no hay zonas, crear las 6 por defecto
+            if (Object.keys(d.zonas).length === 0) {
+                d.zonas = zonasPorDefecto();
+                fs.writeFileSync(CONFIG_PATH, JSON.stringify(d, null, 2));
+            }
+            
             return d;
         }
     } catch (e) {
         console.log('⚠️ config-zonas.json corrupto, regenerando...');
     }
-    const base = estructuraVacia();
+    const base = {
+        zonas: zonasPorDefecto(),
+        labels: {},
+        licenseKey: '',
+        phoneNumber: '',  // 🔧 Vacío por defecto
+    };
     try {
         fs.writeFileSync(CONFIG_PATH, JSON.stringify(base, null, 2));
         console.log('📝 config-zonas.json generado automáticamente');
@@ -172,19 +188,35 @@ function aplicarCambios() {
     if (d.labels) Object.assign(LABELS, d.labels);
     if (d.phoneNumber) CONFIG.phoneNumber = d.phoneNumber;
 
-    for (const [zonaKey, zona] of Object.entries(CONFIG.ZONAS)) {
-        const zd = d.zonas[zonaKey];
-        if (!zd) continue;
+    // 🔧 Reconstruir CONFIG.ZONAS desde el JSON (zonas dinámicas)
+    for (const [zonaKey, zd] of Object.entries(d.zonas)) {
+        if (!CONFIG.ZONAS[zonaKey]) {
+            CONFIG.ZONAS[zonaKey] = {
+                nombre: zd.nombre || zonaKey,
+                botActive: false,
+                IMAGE_GROUPS: new Set(),
+                IMAGE_NUMBERS: new Set(),
+                KEYWORD_GROUPS: new Set(),
+                KEYWORD_NUMBERS: new Set(),
+                KEYWORDS: ['solicita', 'solicito']
+            };
+        }
+        
+        const zona = CONFIG.ZONAS[zonaKey];
         if (zd.nombre) zona.nombre = zd.nombre;
         zona.botActive = !!zd.botActive;
-        zd.image_groups_removed.forEach(g => zona.IMAGE_GROUPS.delete(g));
+        
+        // Limpiar sets y reconstruir
+        zona.IMAGE_GROUPS.clear();
+        zona.IMAGE_NUMBERS.clear();
+        zona.KEYWORD_GROUPS.clear();
+        zona.KEYWORD_NUMBERS.clear();
+        
         zd.image_groups_extra.forEach(g => zona.IMAGE_GROUPS.add(g));
-        zd.image_numbers_removed.forEach(n => zona.IMAGE_NUMBERS.delete(n));
         zd.image_numbers_extra.forEach(n => zona.IMAGE_NUMBERS.add(n));
-        zd.keyword_groups_removed.forEach(g => zona.KEYWORD_GROUPS.delete(g));
         zd.keyword_groups_extra.forEach(g => zona.KEYWORD_GROUPS.add(g));
-        zd.keyword_numbers_removed.forEach(n => zona.KEYWORD_NUMBERS.delete(n));
         zd.keyword_numbers_extra.forEach(n => zona.KEYWORD_NUMBERS.add(n));
+        
         zd.keywords_removed.forEach(k => {
             const i = zona.KEYWORDS.indexOf(k);
             if (i >= 0) zona.KEYWORDS.splice(i, 1);
@@ -192,6 +224,13 @@ function aplicarCambios() {
         zd.keywords_extra.forEach(k => {
             if (!zona.KEYWORDS.includes(k)) zona.KEYWORDS.push(k);
         });
+    }
+    
+    // 🔧 Eliminar zonas que ya no existen en el JSON
+    for (const key of Object.keys(CONFIG.ZONAS)) {
+        if (!d.zonas[key]) {
+            delete CONFIG.ZONAS[key];
+        }
     }
 }
 
@@ -604,6 +643,46 @@ app.post('/api/zona/renombrar', (req, res) => {
     if (!d.zonas[zonaKey]) return res.status(400).json({ error: 'zona no existe' });
     if (!nombre) return res.status(400).json({ error: 'nombre vacío' });
     d.zonas[zonaKey].nombre = nombre;
+    guardarDinamico(d);
+    aplicarCambios();
+    res.json({ ok: true });
+});
+
+// 🔧 NUEVO: Crear zona dinámica
+app.post('/api/zona/crear', (req, res) => {
+    const { nombre } = req.body;
+    if (!nombre || !nombre.trim()) {
+        return res.status(400).json({ error: 'Nombre vacío' });
+    }
+    
+    const d = cargarDinamico();
+    
+    // Generar una key única (slug + timestamp)
+    const slug = nombre.toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, '');
+    
+    const key = (slug || 'zona') + '_' + Date.now().toString(36).slice(-4);
+    
+    d.zonas[key] = crearEstructuraZona(nombre.trim());
+    
+    guardarDinamico(d);
+    aplicarCambios();
+    res.json({ ok: true, zonaKey: key, nombre: nombre.trim() });
+});
+
+// 🔧 NUEVO: Eliminar zona
+app.post('/api/zona/eliminar', (req, res) => {
+    const { zonaKey } = req.body;
+    if (!zonaKey) return res.status(400).json({ error: 'Falta zonaKey' });
+    
+    const d = cargarDinamico();
+    if (!d.zonas[zonaKey]) {
+        return res.status(400).json({ error: 'Zona no existe' });
+    }
+    
+    delete d.zonas[zonaKey];
     guardarDinamico(d);
     aplicarCambios();
     res.json({ ok: true });
