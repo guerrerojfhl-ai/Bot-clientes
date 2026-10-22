@@ -233,7 +233,7 @@
         .modal .modal-actions { display: flex; gap: 8px; margin-top: 16px; }
         .modal .modal-actions button { flex: 1; }
 
-        /* 🔧 Dashboard de estadísticas */
+        /* Dashboard de estadísticas */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -258,7 +258,7 @@
             margin-top: 4px;
         }
 
-        /* 🔧 Buscador */
+        /* Buscador */
         .buscador-container {
             margin-bottom: 12px;
         }
@@ -269,7 +269,7 @@
             padding: 12px;
         }
 
-        /* 🔧 Tema claro */
+        /* Tema claro */
         body.light {
             background: #f5f5f5;
             color: #111;
@@ -297,8 +297,12 @@
         }
         body.light .info { color: #666; }
         body.light .vacio { color: #999; }
+        body.light .buscador-container input {
+            background: #fff;
+            color: #111;
+        }
 
-        /* 🔧 Toggle de tema */
+        /* Toggle de tema */
         .theme-toggle {
             position: fixed;
             top: 16px;
@@ -317,7 +321,7 @@
         }
         .theme-toggle:active { transform: scale(0.95); }
 
-        /* 🔧 Historial de respuestas */
+        /* Historial de respuestas */
         .historial-item {
             padding: 8px;
             background: #0a0a0a;
@@ -329,6 +333,9 @@
         .historial-item .tiempo { color: #888; font-size: 10px; }
         .historial-item .zona { color: #60a5fa; font-weight: bold; }
         body.light .historial-item { background: #f9f9f9; }
+
+        /* Clase para ocultar items */
+        .oculto { display: none !important; }
 
         body.pwa-mode {
             padding-top: max(16px, env(safe-area-inset-top));
@@ -346,12 +353,11 @@
     </style>
 </head>
 <body>
-    <!-- 🔧 Toggle de tema -->
     <button class="theme-toggle" onclick="toggleTema()" id="theme-toggle" title="Cambiar tema">🌙</button>
 
     <h1>🤖 BotClientesRepartidores</h1>
 
-    <!-- 🔧 DASHBOARD DE ESTADÍSTICAS -->
+    <!-- Dashboard de estadísticas -->
     <div class="card">
         <h2>📊 Resumen</h2>
         <div class="stats-grid">
@@ -411,14 +417,14 @@
         <button class="secondary" onclick="prewarm('global')">🔥 Enviar Prewarm a Todas las Zonas</button>
     </div>
 
-    <!-- 🔧 HISTORIAL DE RESPUESTAS -->
+    <!-- Historial de respuestas -->
     <div class="card">
         <h2>📈 Últimas respuestas</h2>
         <p class="info">Cuando el bot responde "Y", aparece aquí.</p>
         <div id="historial" style="margin-top: 12px; max-height: 300px; overflow-y: auto;">Cargando...</div>
     </div>
 
-    <!-- DETECCIONES DE GRUPOS -->
+    <!-- Detecciones de grupos -->
     <div class="card">
         <h2>🔍 Grupos Detectados</h2>
         <p class="info">
@@ -429,9 +435,9 @@
         <button class="gray" onclick="limpiarDetectados()" style="margin-top: 8px;">🗑️ Limpiar Lista</button>
     </div>
 
-    <!-- 🔧 BUSCADOR -->
+    <!-- Buscador -->
     <div class="buscador-container">
-        <input id="buscar" placeholder="🔍 Buscar grupo, número o keyword..." oninput="filtrarZonas()">
+        <input id="buscar" placeholder="🔍 Buscar grupo, número o keyword...">
     </div>
 
     <h2 style="margin-top:20px;">🗺️ Zonas</h2>
@@ -469,16 +475,14 @@
         let zonaSeleccionadaPorDetectado = {};
         let modalCopiarValor = null;
 
-        // 🔧 Historial de respuestas
         let ultimoHistorialId = 0;
         let historialNotificado = new Set();
 
-        // Variables para detectar bot caído
         let fallosConsecutivos = 0;
         const MAX_FALLOS_ANTES_DE_AVISO = 3;
         let avisoBotActivo = false;
 
-        // 🔧 Tema
+        // ==================== TEMA ====================
         function toggleTema() {
             document.body.classList.toggle('light');
             const esClaro = document.body.classList.contains('light');
@@ -486,7 +490,6 @@
             localStorage.setItem('tema', esClaro ? 'light' : 'dark');
         }
 
-        // Cargar tema guardado
         if (localStorage.getItem('tema') === 'light') {
             document.body.classList.add('light');
             document.getElementById('theme-toggle').textContent = '☀️';
@@ -572,7 +575,7 @@
             aviso.innerHTML = `
                 <div style="display:flex;flex-direction:column;gap:2px;flex:1;">
                     <span style="font-size:14px;">⚠️ El bot no responde</span>
-                    <span style="font-size:11px;opacity:0.9;font-weight:400;">Abre Termux y reinicia el bot para solucionarlo.</span>
+                    <span style="font-size:11px;opacity:0.9;font-weight:400;">Reinicia el bot para solucionarlo.</span>
                 </div>
                 <button onclick="location.reload()" style="
                     background:#000;color:#fff;border:none;padding:8px 14px;
@@ -596,11 +599,10 @@
                 zonas = d.zonas;
                 labels = d.labels || {};
                 renderZonas();
-                actualizarStats();  // 🔧 Actualizar dashboard
+                actualizarStats();
             } catch (e) { console.error(e); }
         }
 
-        // 🔧 Actualizar estadísticas
         function actualizarStats() {
             let grupos = 0, numeros = 0, keywords = 0, activas = 0;
             for (const z of Object.values(zonas)) {
@@ -615,16 +617,25 @@
             document.getElementById('stat-activas').textContent = activas;
         }
 
-        // 🔧 Filtrar zonas por búsqueda
+        // ==================== BUSCADOR ====================
         function filtrarZonas() {
             const q = document.getElementById('buscar').value.toLowerCase().trim();
+            
+            if (!q) {
+                document.querySelectorAll('.lista-item').forEach(i => i.style.display = '');
+                document.querySelectorAll('.card.zona').forEach(c => c.style.display = '');
+                return;
+            }
+            
             document.querySelectorAll('.lista-item').forEach(item => {
-                if (!q) {
-                    item.style.display = '';
-                    return;
-                }
                 const texto = item.textContent.toLowerCase();
                 item.style.display = texto.includes(q) ? '' : 'none';
+            });
+            
+            document.querySelectorAll('.card.zona').forEach(card => {
+                const items = card.querySelectorAll('.lista-item');
+                const hayVisibles = Array.from(items).some(i => i.style.display !== 'none');
+                card.style.display = hayVisibles ? '' : 'none';
             });
         }
 
@@ -707,7 +718,7 @@
             }
 
             cont.innerHTML = html;
-            filtrarZonas();  // 🔧 Reaplicar filtro si hay búsqueda activa
+            filtrarZonas();
         }
 
         async function toggleZona(zonaKey) {
@@ -799,7 +810,6 @@
             }
         }
 
-        // 🔧 Confirmación doble antes de borrar
         async function quitar(zonaKey, tipo, valor) {
             if (!confirm('¿Eliminar este elemento?\n\n' + valor)) return;
             if (!confirm('⚠️ ÚLTIMA CONFIRMACIÓN\n\n¿Seguro que quieres eliminar:\n' + valor)) return;
@@ -831,7 +841,7 @@
                     toast('❌ ' + (d.error || 'Error'), true);
                 }
             } catch (e) {
-                toast('❌ El bot no responde. Reinicia Termux.', true);
+                toast('❌ El bot no responde.', true);
             }
         }
 
@@ -964,11 +974,9 @@
                 const lista = await r.json();
                 renderHistorial(lista);
                 
-                // 🔧 Notificar nuevas respuestas
                 for (const h of lista) {
                     if (h.id > ultimoHistorialId && !historialNotificado.has(h.id)) {
                         if (ultimoHistorialId > 0) {
-                            // Es una respuesta nueva
                             const numCorto = h.numero ? h.numero.slice(-4) : '????';
                             toast(`✅ Bot respondió en ${h.zonaNombre} (…${numCorto})`);
                         }
@@ -1136,15 +1144,34 @@
             toast('🗑️ Lista limpiada');
         }
 
+        // ==================== CONECTAR BUSCADOR ====================
+        // Esto se ejecuta cuando el DOM está listo
+        function conectarBuscador() {
+            const input = document.getElementById('buscar');
+            if (input) {
+                input.oninput = filtrarZonas;
+                input.onkeydown = (e) => { if (e.key === 'Enter') e.preventDefault(); };
+                console.log('✅ Buscador conectado');
+            }
+        }
+
+        // ==================== INICIO ====================
         cargarTodo();
         cargarZonasLista().then(() => cargarDetectados());
         
+        // Conectar buscador cuando el DOM esté listo
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', conectarBuscador);
+        } else {
+            conectarBuscador();
+        }
+
         setInterval(cargarStatus, 5000);
         setInterval(() => {
             const haySelectAbierto = document.activeElement?.tagName === 'SELECT';
             if (!haySelectAbierto) {
                 cargarDetectados();
-                cargarHistorial();  // 🔧 Recargar historial
+                cargarHistorial();
             }
         }, 5000);
     </script>
