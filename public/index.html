@@ -334,9 +334,6 @@
         .historial-item .zona { color: #60a5fa; font-weight: bold; }
         body.light .historial-item { background: #f9f9f9; }
 
-        /* Clase para ocultar items */
-        .oculto { display: none !important; }
-
         body.pwa-mode {
             padding-top: max(16px, env(safe-area-inset-top));
             padding-bottom: max(40px, env(safe-area-inset-bottom));
@@ -400,7 +397,7 @@
         <h2>📞 Configurar Teléfono</h2>
         <p class="info">Formato: código de país + número (solo dígitos)</p>
         <p class="info">Ejemplo México: <b>5216691234567</b></p>
-        <input id="phoneInput" placeholder="5216691234567" type="tel">
+        <input id="phoneInput" placeholder="Ej: 521XXXXXXXXXX" type="tel">
         <button class="warning" onclick="guardarTelefono()">💾 Guardar y Reiniciar Bot</button>
         <button class="secondary" onclick="regenerarPairing()" style="margin-top: 8px;">🔄 Generar Código Nuevo</button>
     </div>
@@ -441,6 +438,7 @@
     </div>
 
     <h2 style="margin-top:20px;">🗺️ Zonas</h2>
+    <button class="secondary" onclick="nuevaZona()" style="margin-bottom:12px;">➕ Nueva Zona</button>
     <div id="zonas-container"></div>
 
     <!-- Modal para copiar entre zonas -->
@@ -686,6 +684,7 @@
                     <button class="secondary" onclick="prewarm('${key}')">🔥 Prewarm Zona</button>
 
                     <button class="gray small" onclick="renombrar('${key}')">✏️ Renombrar</button>
+                    <button class="danger small" onclick="eliminarZona('${key}')">🗑️ Eliminar Zona</button>
 
                     <h4>📋 Grupos Imágenes (${z.imageGroups.length})</h4>
                     ${z.imageGroups.map(g => itemLista(g, key, 'image_groups')).join('') || '<p class="info">(vacío)</p>'}
@@ -746,6 +745,46 @@
             if (d.ok) {
                 toast('✅ Renombrada');
                 cargarConfig();
+            }
+        }
+
+        async function nuevaZona() {
+            const nombre = prompt('Nombre de la nueva zona:\n(ej: Sucursal Norte, Zona 7, etc.)');
+            if (!nombre || !nombre.trim()) return;
+
+            const r = await fetch('/api/zona/crear', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ nombre: nombre.trim() })
+            });
+            const d = await r.json();
+            if (d.ok) {
+                toast('✅ Zona "' + d.nombre + '" creada');
+                await cargarConfig();
+                await cargarZonasLista();
+            } else {
+                toast('❌ ' + (d.error || 'Error'), true);
+            }
+        }
+
+        async function eliminarZona(zonaKey) {
+            const nombre = zonas[zonaKey]?.nombre || zonaKey;
+
+            if (!confirm(`¿Eliminar la zona "${nombre}"?\n\nSe borrarán todos sus grupos, números y keywords.`)) return;
+            if (!confirm(`⚠️ ÚLTIMA CONFIRMACIÓN\n\n¿Seguro que quieres eliminar "${nombre}"?`)) return;
+
+            const r = await fetch('/api/zona/eliminar', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ zonaKey })
+            });
+            const d = await r.json();
+            if (d.ok) {
+                toast('🗑️ Zona eliminada');
+                await cargarConfig();
+                await cargarZonasLista();
+            } else {
+                toast('❌ ' + (d.error || 'Error'), true);
             }
         }
 
@@ -813,7 +852,7 @@
         async function quitar(zonaKey, tipo, valor) {
             if (!confirm('¿Eliminar este elemento?\n\n' + valor)) return;
             if (!confirm('⚠️ ÚLTIMA CONFIRMACIÓN\n\n¿Seguro que quieres eliminar:\n' + valor)) return;
-            
+
             const r = await fetch('/api/zona/remove', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -849,12 +888,12 @@
         function abrirModalCopiar(valor) {
             modalCopiarValor = valor;
             document.getElementById('modal-copiar-valor').textContent = valor;
-            
+
             const selectZona = document.getElementById('modal-copiar-zona');
             selectZona.innerHTML = Object.entries(zonas).map(([key, z]) => 
                 `<option value="${key}">${escapeHtml(z.nombre)}</option>`
             ).join('');
-            
+
             document.getElementById('modal-copiar').classList.add('active');
         }
 
@@ -865,10 +904,10 @@
 
         async function confirmarCopiar() {
             if (!modalCopiarValor) return;
-            
+
             const destinoKey = document.getElementById('modal-copiar-zona').value;
             const tipo = document.getElementById('modal-copiar-tipo').value;
-            
+
             const r = await fetch('/api/zona/copiar', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -973,7 +1012,7 @@
                 if (!r.ok) return;
                 const lista = await r.json();
                 renderHistorial(lista);
-                
+
                 for (const h of lista) {
                     if (h.id > ultimoHistorialId && !historialNotificado.has(h.id)) {
                         if (ultimoHistorialId > 0) {
@@ -993,7 +1032,7 @@
                 cont.innerHTML = '<div class="vacio">Aún no hay respuestas registradas.</div>';
                 return;
             }
-            
+
             cont.innerHTML = lista.slice(0, 20).map(h => {
                 const hace = Math.floor((Date.now() - h.timestamp) / 1000);
                 const haceTexto = hace < 60 ? `hace ${hace}s` :
@@ -1053,7 +1092,7 @@
                 const badgeKw = d.yaEnKeywordGroups ? '<span class="badge ok">YA EN KEYWORDS</span>' : '';
 
                 const idLimpio = btoa(d.jid).replace(/=/g, '').replace(/\//g, '_').replace(/\+/g, '-');
-                
+
                 const zonaGuardada = zonaSeleccionadaPorDetectado[d.jid];
 
                 const opcionesConSeleccion = zonasLista.map(z => {
@@ -1145,7 +1184,6 @@
         }
 
         // ==================== CONECTAR BUSCADOR ====================
-        // Esto se ejecuta cuando el DOM está listo
         function conectarBuscador() {
             const input = document.getElementById('buscar');
             if (input) {
@@ -1158,8 +1196,7 @@
         // ==================== INICIO ====================
         cargarTodo();
         cargarZonasLista().then(() => cargarDetectados());
-        
-        // Conectar buscador cuando el DOM esté listo
+
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', conectarBuscador);
         } else {
