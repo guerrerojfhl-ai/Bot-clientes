@@ -401,6 +401,31 @@
         .lista-item button.edit { background: var(--blue); }
         .lista-item button.copy { background: var(--purple); }
 
+        /* 🔤 Keywords más visibles */
+        .lista-item.keyword-item {
+            background: rgba(16, 185, 129, 0.12);
+            border-left: 4px solid var(--accent);
+            padding: 12px 14px;
+        }
+
+        .lista-item.keyword-item .item-info small {
+            opacity: 1;
+            color: var(--text-primary);
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+        }
+
+        body.light .lista-item.keyword-item {
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        body.light .lista-item.keyword-item .item-info small {
+            color: #0f172a;
+            text-shadow: none;
+        }
+
         /* Detectados */
         .detectado {
             background: var(--bg-input);
@@ -1070,9 +1095,9 @@
 
                     <h4>🔤 Keywords (${z.keywords.length})</h4>
                     ${z.keywords.map(k => `
-                        <div class="lista-item">
+                        <div class="lista-item keyword-item">
                             <div class="item-info">
-                                <small style="opacity:0.9; font-size:12px;">${escapeHtml(k)}</small>
+                                <small>${escapeHtml(k)}</small>
                             </div>
                             <button onclick="quitar('${key}','keywords','${escapeHtml(k)}')">🗑️</button>
                         </div>
