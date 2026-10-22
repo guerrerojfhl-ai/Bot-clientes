@@ -577,7 +577,6 @@
             padding-bottom: max(40px, env(safe-area-inset-bottom));
         }
         body.pwa-mode .header { padding-top: max(12px, env(safe-area-inset-top)); }
-
         body.pwa-mode .btn-instalar { display: none !important; }
 
         @media (max-width: 480px) {
@@ -1023,20 +1022,17 @@
             document.getElementById('aviso-bot')?.remove();
         }
 
-        // 🔧 cargarConfig CON detección de zonas desactivadas automáticamente
         async function cargarConfig() {
             try {
                 const r = await fetch('/api/config');
                 const d = await r.json();
 
-                // Detectar zonas que cambiaron de activa → inactiva
                 const zonasAntes = zonas;
                 const zonasDespues = d.zonas;
 
                 for (const [key, zDespues] of Object.entries(zonasDespues)) {
                     const zAntes = zonasAntes[key];
                     if (zAntes && zAntes.botActive === true && zDespues.botActive === false) {
-                        // La zona se desactivó (probablemente porque el bot respondió)
                         toast(`🔴 Zona "${zDespues.nombre}" desactivada (el bot respondió)`);
                         mostrarNotificacion(
                             '🔴 Zona desactivada',
@@ -1563,6 +1559,8 @@
                 const lista = await r.json();
                 renderHistorial(lista);
 
+                let huboRespuestaNueva = false;
+
                 for (const h of lista) {
                     if (h.id > ultimoHistorialId && !historialNotificado.has(h.id)) {
                         if (ultimoHistorialId > 0) {
@@ -1574,10 +1572,18 @@
                                 '🤖 Bot respondió',
                                 `En ${h.zonaNombre} al número …${numCorto}`
                             );
+
+                            huboRespuestaNueva = true;
                         }
                         historialNotificado.add(h.id);
                         if (h.id > ultimoHistorialId) ultimoHistorialId = h.id;
                     }
+                }
+
+                // 🔧 Si hubo respuesta nueva, refrescar zonas y estado INMEDIATAMENTE
+                if (huboRespuestaNueva) {
+                    await cargarConfig();
+                    await cargarStatus();
                 }
             } catch (e) { console.error(e); }
         }
@@ -1685,7 +1691,7 @@
                             <button onclick="aplicarDetectado('${d.jid}', null, 'image_groups', 'zona-${idLimpio}')">
                                 ➕ Imágenes
                             </button>
-                            <button onclick="aplicarDetectado('${d.jid}', null, 'keyword_groups', 'zona-${d.jid}')">
+                            <button onclick="aplicarDetectado('${d.jid}', null, 'keyword_groups', 'zona-${idLimpio}')">
                                 ➕ Keywords
                             </button>
                             <button class="secondary" onclick="relabel('${d.jid}')" style="flex: 0 0 auto; min-width: 50px;">✏️</button>
@@ -1773,19 +1779,24 @@
             }
         }
 
-        // 🔧 REFRESCO AUTOMÁTICO DE ZONAS
+        // 🔧 Solo refresco de estado cada 5s (para saber si el bot está conectado)
         setInterval(cargarStatus, 5000);
+
+        // 🔧 Historial cada 3s (detecta respuestas rápido → refresca zonas)
         setInterval(() => {
             const haySelectAbierto = document.activeElement?.tagName === 'SELECT';
             const hayInputEnfocado = document.activeElement?.tagName === 'INPUT';
 
             if (!haySelectAbierto && !hayInputEnfocado) {
-                cargarConfig();
-                cargarDetectados();
                 cargarHistorial();
             }
-        }, 5000);
-        setInterval(cargarEstadoCalentamiento, 15000);
+        }, 3000);
+
+        // ❌ NO hay setInterval de cargarConfig()
+        // ❌ NO hay setInterval de cargarDetectados()
+        // Las zonas y detectados solo se refrescan cuando:
+        //   - El usuario hace una acción manual
+        //   - Se detecta una respuesta nueva en el historial
     </script>
 
     <script>
