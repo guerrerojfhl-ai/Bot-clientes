@@ -112,32 +112,6 @@
         .btn-icon:active { transform: scale(0.95); }
         .btn-icon.activo { border-color: var(--accent); box-shadow: 0 0 12px var(--accent-glow); }
 
-        /* 🔧 Botón de instalar PWA */
-        .btn-instalar {
-            display: none;
-            padding: 8px 16px;
-            background: linear-gradient(135deg, var(--accent), var(--accent-hover));
-            border: none;
-            border-radius: 10px;
-            color: #fff;
-            font-weight: 700;
-            font-size: 13px;
-            cursor: pointer;
-            align-items: center;
-            gap: 6px;
-            box-shadow: 0 4px 12px var(--accent-glow);
-            animation: pulse-instalar 2s ease-in-out infinite;
-            transition: all 0.2s ease;
-        }
-        .btn-instalar.visible { display: inline-flex; }
-        .btn-instalar:hover { transform: translateY(-2px); box-shadow: 0 6px 20px var(--accent-glow); }
-        .btn-instalar:active { transform: scale(0.98); }
-
-        @keyframes pulse-instalar {
-            0%, 100% { box-shadow: 0 4px 12px var(--accent-glow); }
-            50% { box-shadow: 0 4px 24px rgba(16, 185, 129, 0.6); }
-        }
-
         .container { max-width: 900px; margin: 0 auto; padding: 16px; }
 
         h1 { font-size: 24px; margin-bottom: 16px; }
@@ -579,9 +553,6 @@
         }
         body.pwa-mode .header { padding-top: max(12px, env(safe-area-inset-top)); }
 
-        /* En modo PWA, ocultar el botón de instalar */
-        body.pwa-mode .btn-instalar { display: none !important; }
-
         @media (max-width: 480px) {
             .header-title { font-size: 14px; }
             .header-logo { font-size: 24px; }
@@ -589,7 +560,6 @@
             .card { padding: 14px; }
             .stat-box .num { font-size: 24px; }
             .pairing-code { font-size: 28px; letter-spacing: 4px; }
-            .btn-instalar { padding: 6px 10px; font-size: 11px; }
         }
     </style>
 </head>
@@ -603,9 +573,6 @@
             </div>
         </div>
         <div class="header-actions">
-            <button class="btn-instalar" id="btn-instalar" onclick="instalarPWA()">
-                📲 Instalar App
-            </button>
             <button class="btn-icon" onclick="activarNotificaciones()" id="btn-notif" title="Activar notificaciones">🔕</button>
             <button class="btn-icon" onclick="toggleTema()" id="theme-toggle" title="Cambiar tema">🌙</button>
             <button class="btn-icon" onclick="cargarTodo()" title="Actualizar">🔄</button>
@@ -756,9 +723,6 @@
         const MAX_FALLOS_ANTES_DE_AVISO = 3;
         let avisoBotActivo = false;
 
-        // 🔧 Variable para el evento de instalación PWA
-        let deferredPrompt = null;
-
         // ==================== TEMA ====================
         function toggleTema() {
             document.body.classList.toggle('light');
@@ -780,65 +744,6 @@
             setTimeout(() => {
                 t.classList.remove('show');
             }, 2800);
-        }
-
-        // ==================== INSTALAR PWA ====================
-        // Capturar el evento beforeinstallprompt
-        window.addEventListener('beforeinstallprompt', (e) => {
-            console.log('✅ PWA instalable detectada');
-            e.preventDefault();
-            deferredPrompt = e;
-            mostrarBotonInstalar();
-        });
-
-        function mostrarBotonInstalar() {
-            // Si ya está instalada, no mostrar
-            if (window.matchMedia('(display-mode: standalone)').matches) return;
-            if (window.navigator.standalone === true) return;
-            
-            const btn = document.getElementById('btn-instalar');
-            if (btn) {
-                btn.classList.add('visible');
-            }
-        }
-
-        async function instalarPWA() {
-            if (!deferredPrompt) {
-                toast('La instalación no está disponible todavía. Intenta de nuevo en unos segundos.', true);
-                return;
-            }
-            
-            deferredPrompt.prompt();
-            const { outcome } = await deferredPrompt.userChoice;
-            console.log('Resultado instalación:', outcome);
-            
-            if (outcome === 'accepted') {
-                toast('✅ Instalada correctamente');
-                const btn = document.getElementById('btn-instalar');
-                if (btn) btn.classList.remove('visible');
-            } else {
-                toast('❌ Instalación cancelada', true);
-            }
-            
-            deferredPrompt = null;
-        }
-
-        // Ocultar el botón si la app ya está instalada
-        window.addEventListener('appinstalled', () => {
-            console.log('✅ PWA instalada');
-            toast('🎉 App instalada en tu pantalla de inicio');
-            const btn = document.getElementById('btn-instalar');
-            if (btn) btn.classList.remove('visible');
-            deferredPrompt = null;
-        });
-
-        // Si ya está en modo standalone, ocultar el botón
-        if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
-            document.body.classList.add('pwa-mode');
-            setTimeout(() => {
-                const btn = document.getElementById('btn-instalar');
-                if (btn) btn.classList.remove('visible');
-            }, 100);
         }
 
         // ==================== NOTIFICACIONES ====================
@@ -898,6 +803,7 @@
                 return;
             }
 
+            // Pedir permiso (esto SIEMPRE requiere interacción del usuario, pero lo intentamos al cargar)
             try {
                 const permiso = await Notification.requestPermission();
                 
@@ -920,33 +826,31 @@
             actualizarBotonNotif();
         }
 
-        async function mostrarNotificacion(titulo, cuerpo) {
-            if (!('Notification' in window)) return;
-            if (Notification.permission !== 'granted') return;
+       async function mostrarNotificacion(titulo, cuerpo) {
+    if (!('Notification' in window)) return;
+    if (Notification.permission !== 'granted') return;
 
-            try {
-                // Usar el Service Worker (funciona en Android)
-                const registration = await navigator.serviceWorker.ready;
-                await registration.showNotification(titulo, {
-                    body: cuerpo,
-                    icon: '/icon-192.png',
-                    badge: '/icon-192.png',
-                    tag: 'bot-respuesta-' + Date.now(),
-                    requireInteraction: false,
-                    silent: false
-                });
-            } catch (e) {
-                console.warn('No se pudo mostrar notificación vía SW:', e);
-                // Fallback: intentar con new Notification
-                try {
-                    new Notification(titulo, {
-                        body: cuerpo,
-                        icon: '/icon-192.png'
-                    });
-                } catch (e2) {}
-            }
-        }
+    try {
+        // Esperar a que el Service Worker esté listo (con timeout)
+        const registration = await Promise.race([
+            navigator.serviceWorker.ready,
+            new Promise((_, reject) => setTimeout(() => reject(new Error('SW timeout')), 3000))
+        ]);
 
+        await registration.showNotification(titulo, {
+            body: cuerpo,
+            icon: '/icon-192.png',
+            badge: '/icon-192.png',
+            tag: 'bot-respuesta-' + Date.now(),
+            requireInteraction: false,
+            silent: false
+        });
+        console.log('✅ Notificación enviada vía SW');
+    } catch (e) {
+        console.warn('No se pudo mostrar notificación vía SW:', e.message);
+        // NO usar new Notification() como fallback en Android, no funciona
+    }
+}
         // ==================== CARGA INICIAL ====================
         async function cargarTodo() {
             await cargarStatus();
@@ -1073,6 +977,7 @@
                 const total = data.totalGrupos;
                 const calentados = data.calentados;
                 const frios = data.frios;
+                const ttl = data.ttlMinutos;
                 const porcentaje = total > 0 ? Math.round((calentados / total) * 100) : 0;
 
                 const avisoTexto = document.getElementById('aviso-texto');
@@ -1110,8 +1015,10 @@
                         const min = Math.floor(g.expiraEn / 60);
                         const seg = g.expiraEn % 60;
                         const expiraTexto = min > 0 ? `${min}min ${seg}s` : `${seg}s`;
+
                         const nombreGrupo = etiqueta(g.grupo);
                         const tieneAlias = nombreGrupo !== g.grupo;
+
                         return `
                             <div class="lista-item calentado">
                                 <div class="item-info">
@@ -1132,6 +1039,7 @@
                     listaFrios.innerHTML = data.listaFrios.map(g => {
                         const nombreGrupo = etiqueta(g.grupo);
                         const tieneAlias = nombreGrupo !== g.grupo;
+
                         return `
                             <div class="lista-item frio">
                                 <div class="item-info">
@@ -1565,8 +1473,10 @@
                         if (ultimoHistorialId > 0) {
                             const numCorto = h.numero ? h.numero.slice(-4) : '????';
                             
+                            // Toast
                             toast(`✅ Bot respondió en ${h.zonaNombre} (…${numCorto})`);
                             
+                            // Notificación del sistema
                             mostrarNotificacion(
                                 '🤖 Bot respondió',
                                 `En ${h.zonaNombre} al número …${numCorto}`
@@ -1754,7 +1664,9 @@
             document.addEventListener('DOMContentLoaded', () => {
                 conectarBuscador();
                 actualizarBotonNotif();
+                // Intentar activar notificaciones automáticamente
                 if ('Notification' in window && Notification.permission === 'default') {
+                    // Esperar 2 segundos para que el usuario vea la página antes de pedir permiso
                     setTimeout(() => {
                         activarNotificaciones(true);
                     }, 2000);
@@ -1795,6 +1707,92 @@
 
         if (isStandalone) {
             document.body.classList.add('pwa-mode');
+        }
+    </script>
+
+    <script>
+        let deferredPrompt = null;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            console.log('✅ PWA instalable detectada');
+            e.preventDefault();
+            deferredPrompt = e;
+            mostrarBannerInstalacion();
+        });
+
+        function mostrarBannerInstalacion() {
+            if (window.matchMedia('(display-mode: standalone)').matches) return;
+            if (localStorage.getItem('install-banner-cerrado') === '1') return;
+            if (document.getElementById('install-banner')) return;
+
+            const banner = document.createElement('div');
+            banner.id = 'install-banner';
+            banner.style.cssText = `
+                position: fixed;
+                bottom: 16px;
+                left: 16px;
+                right: 16px;
+                background: linear-gradient(135deg, #10b981, #059669);
+                color: #fff;
+                padding: 16px;
+                border-radius: 14px;
+                font-weight: 600;
+                z-index: 1000;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                box-shadow: 0 10px 30px rgba(16, 185, 129, 0.4);
+                animation: slideUp 0.3s ease;
+            `;
+            banner.innerHTML = `
+                <div style="display:flex;flex-direction:column;gap:3px;">
+                    <span style="font-size:15px;">📲 Instalar BotClientes</span>
+                    <span style="font-size:12px;opacity:0.85;font-weight:400;">Accede más rápido desde tu pantalla</span>
+                </div>
+                <div style="display:flex;gap:8px;">
+                    <button onclick="instalarPWA()" style="
+                        background:#000;color:#fff;border:none;padding:10px 18px;
+                        border-radius:8px;font-weight:bold;font-size:13px;
+                        width:auto;margin:0;cursor:pointer;
+                    ">Instalar</button>
+                    <button onclick="cerrarBanner()" style="
+                        background:transparent;color:#fff;border:none;padding:10px;
+                        font-size:16px;width:auto;margin:0;cursor:pointer;opacity:0.7;
+                    ">✕</button>
+                </div>
+            `;
+
+            document.body.appendChild(banner);
+        }
+
+        async function instalarPWA() {
+            if (!deferredPrompt) {
+                toast('No disponible. Usa el menú de Chrome → Instalar', true);
+                return;
+            }
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log('Resultado instalación:', outcome);
+            if (outcome === 'accepted') {
+                toast('✅ Instalada correctamente');
+                document.getElementById('install-banner')?.remove();
+            }
+            deferredPrompt = null;
+        }
+
+        function cerrarBanner() {
+            localStorage.setItem('install-banner-cerrado', '1');
+            document.getElementById('install-banner')?.remove();
+        }
+
+        window.addEventListener('appinstalled', () => {
+            console.log('✅ PWA instalada');
+            document.getElementById('install-banner')?.remove();
+            toast('🎉 App instalada en tu pantalla de inicio');
+        });
+
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            document.getElementById('install-banner')?.remove();
         }
     </script>
 </body>
