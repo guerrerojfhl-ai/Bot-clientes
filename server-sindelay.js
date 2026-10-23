@@ -34,7 +34,6 @@ if (!SECRET) {
 
 // ==================== RUTAS ====================
 const CONFIG_PATH = path.join(__dirname, 'config-zonas.json');
-const CARTERA_PATH = path.join(__dirname, 'config-cartera.json');
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const SESSION_DIR = path.join(__dirname, 'session-imagenes');
 
@@ -49,79 +48,6 @@ const CONFIG = {
     Y: 'Y',
     phoneNumber: '',
 };
-
-// ==================== CARTERA VIRTUAL ====================
-function carteraVacia() {
-    return {
-        activa: false,
-        fechaCorte: new Date().toISOString().slice(0, 10),
-        pedidosHoy: 0,
-        ingresosHoy: 0,
-        historial: []
-    };
-}
-
-function cargarCartera() {
-    try {
-        if (fs.existsSync(CARTERA_PATH)) {
-            const c = JSON.parse(fs.readFileSync(CARTERA_PATH, 'utf8'));
-            c.activa = !!c.activa;
-            c.pedidosHoy = c.pedidosHoy || 0;
-            c.ingresosHoy = c.ingresosHoy || 0;
-            c.historial = c.historial || [];
-            c.fechaCorte = c.fechaCorte || new Date().toISOString().slice(0, 10);
-            return c;
-        }
-    } catch (e) {
-        console.log('⚠️ config-cartera.json corrupto, regenerando...');
-    }
-    const base = carteraVacia();
-    try {
-        fs.writeFileSync(CARTERA_PATH, JSON.stringify(base, null, 2));
-    } catch (e) {}
-    return base;
-}
-
-function guardarCartera(c) {
-    fs.writeFileSync(CARTERA_PATH, JSON.stringify(c, null, 2));
-}
-
-// Pedidos pendientes (en memoria)
-const pedidosPendientes = [];
-const MAX_PENDIENTES = 50;
-
-function agregarPendiente(zonaNombre, grupo, numero) {
-    const item = {
-        id: Date.now() + Math.random(),
-        timestamp: Date.now(),
-        zonaNombre,
-        grupo,
-        numero
-    };
-    pedidosPendientes.push(item);
-    if (pedidosPendientes.length > MAX_PENDIENTES) pedidosPendientes.shift();
-    return item;
-}
-
-// Reinicio automático: 12:00 UTC = 6:00 AM CDMX
-function verificarCorteDiario() {
-    const ahora = new Date();
-    const fechaHoy = ahora.toISOString().slice(0, 10);
-    const horaUTC = ahora.getUTCHours();
-
-    const c = cargarCartera();
-
-    if (horaUTC >= 12 && c.fechaCorte !== fechaHoy) {
-        if (c.pedidosHoy > 0 || c.ingresosHoy > 0) {
-            console.log(`🔄 Corte diario: reiniciando cartera (${c.pedidosHoy} pedidos, $${c.ingresosHoy})`);
-        }
-        c.pedidosHoy = 0;
-        c.ingresosHoy = 0;
-        c.fechaCorte = fechaHoy;
-        guardarCartera(c);
-    }
-}
-setInterval(verificarCorteDiario, 60 * 1000);
 
 // ==================== DETECCIONES ====================
 const detecciones = new Map();
@@ -172,9 +98,9 @@ function agregarHistorial(zonaKey, zonaNombre, grupo, numero, texto) {
     return item;
 }
 
-// ==================== GRUPOS PREWARMENTADOS ====================
+// ==================== GRUPOS PREWARMENTADOS (CALENTADOS) ====================
 const prewarmsRecientes = new Map();
-const PREWARM_TTL_MS = 30 * 60 * 1000;
+const PREWARM_TTL_MS = 30 * 60 * 1000; // 30 minutos
 const BOT_INSTANCE_ID = Date.now();
 
 function yaFuePrewarmed(grupo) {
@@ -208,6 +134,7 @@ function limpiarTodosLosPrewarms() {
     }
 }
 
+// Limpiar prewarms expirados cada minuto
 setInterval(limpiarPrewarmsExpirados, 60 * 1000);
 
 // ==================== VARIABLES GLOBALES ====================
@@ -228,7 +155,6 @@ function crearEstructuraZona(nombre) {
     return {
         nombre: nombre,
         botActive: false,
-        orden: Date.now(),
         image_groups_extra: [], image_groups_removed: [],
         image_numbers_extra: [], image_numbers_removed: [],
         keyword_groups_extra: [], keyword_groups_removed: [],
@@ -268,17 +194,6 @@ function cargarDinamico() {
 
             if (Object.keys(d.zonas).length === 0) {
                 d.zonas = zonasPorDefecto();
-                fs.writeFileSync(CONFIG_PATH, JSON.stringify(d, null, 2));
-            }
-
-            let necesitaGuardar = false;
-            Object.keys(d.zonas).forEach((k, i) => {
-                if (typeof d.zonas[k].orden !== 'number') {
-                    d.zonas[k].orden = i + 1;
-                    necesitaGuardar = true;
-                }
-            });
-            if (necesitaGuardar) {
                 fs.writeFileSync(CONFIG_PATH, JSON.stringify(d, null, 2));
             }
 
@@ -410,7 +325,31 @@ async function enviarYInstantaneo(sock, sender, msg, zonaKey) {
         await sock.sendMessage(sender, { text: CONFIG.Y }, { quoted: msg });
         if (zonaKey) {
             const zona = CONFIG.ZONAS[zonaKey];
-            const numero = msg.key?.participant?.split('@')[0].split(':')[0] || 'desconocido';
+
+            // 🔽 Extraer número REAL (no LID)
+            let numero = null;
+
+            // Prioridad 1: participantAlt (suele tener el número real cuando es LID)
+            if (msg.key?.participantAlt) {
+                numero = msg.key.participantAlt.split('@')[0].split(':')[0];
+            }
+            // Prioridad 2: participantPn
+            if (!numero && msg.key?.participantPn) {
+                numero = msg.key.participantPn.split('@')[0].split(':')[0];
+            }
+            // Prioridad 3: participant, pero solo si NO es @lid
+            if (!numero && msg.key?.participant) {
+                const participant = msg.key.participant;
+                if (!participant.includes('@lid')) {
+                    numero = participant.split('@')[0].split(':')[0];
+                }
+            }
+            // Prioridad 4: remoteJid si es chat individual
+            if (!numero && !sender?.endsWith('@g.us') && sender?.endsWith('@s.whatsapp.net')) {
+                numero = sender.split('@')[0];
+            }
+            // Fallback
+            if (!numero) numero = 'desconocido';
 
             agregarHistorial(
                 zonaKey,
@@ -420,7 +359,6 @@ async function enviarYInstantaneo(sock, sender, msg, zonaKey) {
                 'Y'
             );
 
-            // Crear pedido pendiente para la cartera
             agregarPendiente(
                 zona?.nombre || zonaKey,
                 sender,
@@ -757,14 +695,8 @@ app.get('/api/config', (req, res) => {
     const d = cargarDinamico();
     limpiarPrewarmsExpirados();
 
-    const entradasOrdenadas = Object.entries(CONFIG.ZONAS).sort((a, b) => {
-        const oa = d.zonas[a[0]]?.orden || 0;
-        const ob = d.zonas[b[0]]?.orden || 0;
-        return oa - ob;
-    });
-
     const zonas = {};
-    for (const [k, v] of entradasOrdenadas) {
+    for (const [k, v] of Object.entries(CONFIG.ZONAS)) {
         const gruposZona = new Set([...v.IMAGE_GROUPS, ...v.KEYWORD_GROUPS]);
         let calentadosZona = 0;
         for (const g of gruposZona) {
@@ -781,7 +713,6 @@ app.get('/api/config', (req, res) => {
             keywords: v.KEYWORDS,
             totalGrupos: gruposZona.size,
             calentados: calentadosZona,
-            orden: d.zonas[k]?.orden || 0,
         };
     }
     res.json({ zonas, labels: d.labels });
@@ -823,10 +754,7 @@ app.post('/api/zona/crear', (req, res) => {
 
     const key = (slug || 'zona') + '_' + Date.now().toString(36).slice(-4);
 
-    const maxOrden = Math.max(0, ...Object.values(d.zonas).map(z => z.orden || 0));
-
     d.zonas[key] = crearEstructuraZona(nombre.trim());
-    d.zonas[key].orden = maxOrden + 1;
 
     guardarDinamico(d);
     aplicarCambios();
@@ -928,43 +856,6 @@ app.post('/api/zona/copiar', (req, res) => {
     res.json({ ok: true });
 });
 
-app.post('/api/zona/reordenar', (req, res) => {
-    const { zonaKey, direccion } = req.body;
-    if (!zonaKey || !['up', 'down'].includes(direccion)) {
-        return res.status(400).json({ error: 'Parámetros inválidos' });
-    }
-
-    const d = cargarDinamico();
-
-    const keys = Object.keys(d.zonas);
-    keys.forEach((k, i) => {
-        if (typeof d.zonas[k].orden !== 'number') d.zonas[k].orden = i + 1;
-    });
-
-    const ordenadas = keys.sort((a, b) => d.zonas[a].orden - d.zonas[b].orden);
-    const idx = ordenadas.indexOf(zonaKey);
-    if (idx === -1) return res.status(400).json({ error: 'Zona no encontrada' });
-
-    const vecinoIdx = direccion === 'up' ? idx - 1 : idx + 1;
-    if (vecinoIdx < 0 || vecinoIdx >= ordenadas.length) {
-        return res.json({ ok: true, cambiado: false });
-    }
-
-    const vecinaKey = ordenadas[vecinoIdx];
-
-    const tmp = d.zonas[zonaKey].orden;
-    d.zonas[zonaKey].orden = d.zonas[vecinaKey].orden;
-    d.zonas[vecinaKey].orden = tmp;
-
-    const entradas = Object.entries(d.zonas);
-    entradas.sort((a, b) => a[1].orden - b[1].orden);
-    entradas.forEach(([key, zona], i) => { zona.orden = i + 1; });
-
-    guardarDinamico(d);
-    aplicarCambios();
-    res.json({ ok: true, cambiado: true });
-});
-
 app.post('/api/prewarm', async (req, res) => {
     if (!licenciaActiva()) return res.status(403).json({ error: 'LICENCIA REQUERIDA' });
     const { zonaKey } = req.body;
@@ -974,77 +865,6 @@ app.post('/api/prewarm', async (req, res) => {
     }
     const r = await prewarmZona(zonaKey);
     res.json(r);
-});
-
-// ==================== CARTERA VIRTUAL ====================
-app.get('/api/cartera', (req, res) => {
-    verificarCorteDiario();
-    const c = cargarCartera();
-    res.json({
-        activa: c.activa,
-        pedidosHoy: c.pedidosHoy,
-        ingresosHoy: c.ingresosHoy,
-        fechaCorte: c.fechaCorte,
-        pendientes: pedidosPendientes.length
-    });
-});
-
-app.post('/api/cartera/toggle', (req, res) => {
-    const c = cargarCartera();
-    c.activa = !c.activa;
-    guardarCartera(c);
-    res.json({ ok: true, activa: c.activa });
-});
-
-app.get('/api/cartera/pendientes', (req, res) => {
-    res.json(pedidosPendientes);
-});
-
-app.post('/api/cartera/confirmar', (req, res) => {
-    const { pedidoId, gano, monto } = req.body;
-    if (!pedidoId) return res.status(400).json({ error: 'Falta pedidoId' });
-
-    const idx = pedidosPendientes.findIndex(p => p.id == pedidoId);
-    if (idx === -1) return res.status(400).json({ error: 'Pedido no existe o ya fue confirmado' });
-
-    const pedido = pedidosPendientes[idx];
-    const c = cargarCartera();
-
-    if (gano) {
-        const montoNum = Number(monto);
-        if (isNaN(montoNum) || montoNum < 0) {
-            return res.status(400).json({ error: 'Monto inválido' });
-        }
-        c.pedidosHoy += 1;
-        c.ingresosHoy += montoNum;
-        c.historial.push({
-            fecha: new Date().toISOString(),
-            timestamp: Date.now(),
-            zona: pedido.zonaNombre,
-            grupo: pedido.grupo,
-            numero: pedido.numero,
-            monto: montoNum
-        });
-        if (c.historial.length > 100) c.historial.shift();
-    }
-
-    guardarCartera(c);
-    pedidosPendientes.splice(idx, 1);
-    res.json({ ok: true, cartera: { pedidosHoy: c.pedidosHoy, ingresosHoy: c.ingresosHoy } });
-});
-
-app.post('/api/cartera/reiniciar', (req, res) => {
-    const c = cargarCartera();
-    c.pedidosHoy = 0;
-    c.ingresosHoy = 0;
-    c.fechaCorte = new Date().toISOString().slice(0, 10);
-    guardarCartera(c);
-    res.json({ ok: true });
-});
-
-app.get('/api/cartera/historial', (req, res) => {
-    const c = cargarCartera();
-    res.json(c.historial.slice().reverse());
 });
 
 // ==================== ESTADO DE CALENTAMIENTO ====================
@@ -1269,7 +1089,6 @@ app.get('/api/status', (req, res) => {
         tieneQR: !!pairingQRActual,
         reiniciando: reiniciando,
         prewarmsCount: prewarmsRecientes.size,
-        carteraPendientes: pedidosPendientes.length,
     });
 });
 
@@ -1290,9 +1109,6 @@ if (!fs.existsSync(CONFIG_PATH)) {
     console.log('📝 Creando config-zonas.json inicial...\n');
     guardarDinamico(estructuraVacia());
 }
-
-cargarCartera();
-verificarCorteDiario();
 
 startBot();
 
