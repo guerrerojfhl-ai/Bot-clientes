@@ -553,6 +553,31 @@
         }
         body.pwa-mode .header { padding-top: max(12px, env(safe-area-inset-top)); }
 
+        .orden-btn {
+            width: 28px;
+            height: 22px;
+            padding: 0 !important;
+            margin: 0 !important;
+            font-size: 11px;
+            background: var(--bg-hover);
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            line-height: 1;
+            flex-shrink: 0;
+        }
+        .orden-btn:hover {
+            background: var(--accent);
+            color: #000;
+            border-color: var(--accent);
+            transform: none;
+            box-shadow: none;
+        }
+
         @media (max-width: 480px) {
             .header-title { font-size: 14px; }
             .header-logo { font-size: 24px; }
@@ -716,7 +741,6 @@
         let zonaSeleccionadaPorDetectado = {};
         let modalCopiarValor = null;
 
-        // 🔽 Estado de zonas expandidas/colapsadas
         let zonasAbiertas = JSON.parse(localStorage.getItem('zonasAbiertas') || '{}');
 
         let ultimoHistorialId = 0;
@@ -726,7 +750,6 @@
         const MAX_FALLOS_ANTES_DE_AVISO = 3;
         let avisoBotActivo = false;
 
-        // ==================== TEMA ====================
         function toggleTema() {
             document.body.classList.toggle('light');
             const esClaro = document.body.classList.contains('light');
@@ -749,7 +772,6 @@
             }, 2800);
         }
 
-        // ==================== NOTIFICACIONES ====================
         function actualizarBotonNotif() {
             const btn = document.getElementById('btn-notif');
             if (!btn) return;
@@ -852,7 +874,6 @@
             }
         }
 
-        // ==================== CARGA INICIAL ====================
         async function cargarTodo() {
             await cargarStatus();
             await cargarConfig();
@@ -969,7 +990,6 @@
             document.getElementById('stat-activas').textContent = activas;
         }
 
-        // ==================== CALENTAMIENTO ====================
         async function cargarEstadoCalentamiento() {
             try {
                 const r = await fetch('/api/prewarms/estado');
@@ -1056,7 +1076,6 @@
             }
         }
 
-        // ==================== BUSCADOR ====================
         function filtrarZonas() {
             const q = document.getElementById('buscar').value.toLowerCase().trim();
 
@@ -1109,6 +1128,20 @@
             renderZonas();
         }
 
+        async function reordenarZona(zonaKey, direccion) {
+            const r = await fetch('/api/zona/reordenar', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ zonaKey, direccion })
+            });
+            const d = await r.json();
+            if (d.ok) {
+                if (d.cambiado) await cargarConfig();
+            } else {
+                toast('❌ ' + (d.error || 'Error'), true);
+            }
+        }
+
         function renderZonas() {
             const cont = document.getElementById('zonas-container');
             let html = '';
@@ -1125,7 +1158,13 @@
                 html += `
                 <div class="card zona ${activa}">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
-                        <h3 style="margin:0;font-size:18px;">${escapeHtml(z.nombre)}</h3>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <div style="display:flex;flex-direction:column;gap:2px;">
+                                <button class="orden-btn" onclick="reordenarZona('${key}','up')" title="Mover arriba">▲</button>
+                                <button class="orden-btn" onclick="reordenarZona('${key}','down')" title="Mover abajo">▼</button>
+                            </div>
+                            <h3 style="margin:0;font-size:18px;">${escapeHtml(z.nombre)}</h3>
+                        </div>
                         <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
                             <span class="badge ${todosCalentados ? 'ok' : 'info'}" style="font-size: 11px; padding: 4px 10px;">
                                 🔥 ${calentadosZona}/${totalGruposZona}
@@ -1475,7 +1514,6 @@
             }
         }
 
-        // ==================== HISTORIAL ====================
         async function cargarHistorial() {
             try {
                 const r = await fetch('/api/historial');
@@ -1525,7 +1563,6 @@
             }).join('');
         }
 
-        // ==================== DETECCIONES ====================
         let zonasLista = [];
 
         async function cargarZonasLista() {
@@ -1659,7 +1696,6 @@
             toast('🗑️ Lista limpiada');
         }
 
-        // ==================== CONECTAR BUSCADOR ====================
         function conectarBuscador() {
             const input = document.getElementById('buscar');
             if (input) {
@@ -1669,7 +1705,6 @@
             }
         }
 
-        // ==================== INICIO ====================
         cargarTodo();
         cargarZonasLista().then(() => cargarDetectados());
 
