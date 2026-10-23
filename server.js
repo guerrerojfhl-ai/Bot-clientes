@@ -14,6 +14,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
+// ⚡ OPTIMIZACIONES
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 process.env.UV_THREADPOOL_SIZE = '512';
 process.env.NODE_NO_WARNINGS = '1';
@@ -21,6 +22,7 @@ process.env.BAILEYS_LOG_LEVEL = 'silent';
 
 require('dotenv').config();
 
+// ==================== SECRETO ====================
 const SECRET = process.env.BOT_SECRET;
 
 if (!SECRET) {
@@ -30,6 +32,7 @@ if (!SECRET) {
     process.exit(1);
 }
 
+// ==================== RUTAS ====================
 const CONFIG_PATH = path.join(__dirname, 'config-zonas.json');
 const CARTERA_PATH = path.join(__dirname, 'config-cartera.json');
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -40,6 +43,7 @@ if (!fs.existsSync(PUBLIC_DIR)) {
     console.log('📝 Carpeta public/ creada');
 }
 
+// ==================== CONFIG ZONAS (DINÁMICO) ====================
 const CONFIG = {
     ZONAS: {},
     Y: 'Y',
@@ -145,6 +149,7 @@ function agregarDeteccion(jid, numero, texto, tipo, nombreGrupo = null) {
     }
 }
 
+// ==================== HISTORIAL DE RESPUESTAS ====================
 const historial = [];
 const MAX_HISTORIAL = 50;
 
@@ -165,6 +170,7 @@ function agregarHistorial(zonaKey, zonaNombre, grupo, numero, texto) {
     return item;
 }
 
+// ==================== GRUPOS PREWARMENTADOS ====================
 const prewarmsRecientes = new Map();
 const PREWARM_TTL_MS = 30 * 60 * 1000;
 const BOT_INSTANCE_ID = Date.now();
@@ -202,6 +208,7 @@ function limpiarTodosLosPrewarms() {
 
 setInterval(limpiarPrewarmsExpirados, 60 * 1000);
 
+// ==================== VARIABLES GLOBALES ====================
 let sockGlobal = null;
 let reiniciando = false;
 let pairingCodeActual = null;
@@ -212,6 +219,7 @@ let licenciaNumero = null;
 let licenciaRazon = 'SIN LICENCIA';
 let numeroConectado = null;
 
+// ==================== PERSISTENCIA ====================
 const LABELS = {};
 
 function crearEstructuraZona(nombre) {
@@ -344,6 +352,7 @@ function aplicarCambios() {
     }
 }
 
+// ==================== LICENCIAS ====================
 function hashNumero(numero) {
     return crypto.createHash('sha256').update(String(numero)).digest('hex').substring(0, 8).toUpperCase();
 }
@@ -385,44 +394,46 @@ function licenciaActiva() {
     return licenciaValida === true;
 }
 
+// ==================== FUNCIONES ====================
 function contieneKeyword(texto, keywords) {
     if (!texto) return false;
     const t = String(texto).toLowerCase().trim();
     return keywords.some(k => t.includes(String(k).toLowerCase().trim()));
 }
 
-// 🔧 CON DELAY — versión clientes
+// 🔽 Extrae el número REAL (no LID) del mensaje
+function extraerNumeroReal(msg, sender) {
+    let numero = null;
+
+    if (msg.key?.participantAlt) {
+        numero = msg.key.participantAlt.split('@')[0].split(':')[0];
+    }
+    if (!numero && msg.key?.participantPn) {
+        numero = msg.key.participantPn.split('@')[0].split(':')[0];
+    }
+    if (!numero && msg.key?.participant) {
+        const participant = msg.key.participant;
+        if (!participant.includes('@lid')) {
+            numero = participant.split('@')[0].split(':')[0];
+        }
+    }
+    if (!numero && !sender?.endsWith('@g.us') && sender?.endsWith('@s.whatsapp.net')) {
+        numero = sender.split('@')[0];
+    }
+    if (!numero) numero = 'desconocido';
+
+    return numero;
+}
+
+// ⏱️ CON DELAY — versión clientes
 async function enviarYInstantaneo(sock, sender, msg, zonaKey) {
     try {
         if (!msg.key?.id) return;
+        await new Promise(r => setTimeout(r, 250));  // ⏱️ DELAY CLIENTES — NO BORRAR
         await sock.sendMessage(sender, { text: CONFIG.Y }, { quoted: msg });
         if (zonaKey) {
             const zona = CONFIG.ZONAS[zonaKey];
-
-            // 🔽 Extraer número REAL (no LID)
-            let numero = null;
-
-            // Prioridad 1: participantAlt (suele tener el número real cuando es LID)
-            if (msg.key?.participantAlt) {
-                numero = msg.key.participantAlt.split('@')[0].split(':')[0];
-            }
-            // Prioridad 2: participantPn
-            if (!numero && msg.key?.participantPn) {
-                numero = msg.key.participantPn.split('@')[0].split(':')[0];
-            }
-            // Prioridad 3: participant, pero solo si NO es @lid
-            if (!numero && msg.key?.participant) {
-                const participant = msg.key.participant;
-                if (!participant.includes('@lid')) {
-                    numero = participant.split('@')[0].split(':')[0];
-                }
-            }
-            // Prioridad 4: remoteJid si es chat individual
-            if (!numero && !sender?.endsWith('@g.us') && sender?.endsWith('@s.whatsapp.net')) {
-                numero = sender.split('@')[0];
-            }
-            // Fallback
-            if (!numero) numero = 'desconocido';
+            const numero = extraerNumeroReal(msg, sender);
 
             agregarHistorial(
                 zonaKey,
@@ -445,6 +456,7 @@ async function enviarYInstantaneo(sock, sender, msg, zonaKey) {
         }
     } catch (e) {}
 }
+
 async function prewarmZona(zonaKey) {
     const sock = sockGlobal;
     if (!sock) return { ok: false, error: 'sock no disponible' };
@@ -506,6 +518,7 @@ async function prewarmGlobal() {
     return { ok: true, total: todos.size, enviados, fallidos, saltados };
 }
 
+// ==================== REINICIAR BOT ====================
 async function reiniciarBot() {
     if (reiniciando) return;
     reiniciando = true;
@@ -538,6 +551,7 @@ async function reiniciarBot() {
     }
 }
 
+// ==================== BOT ====================
 async function obtenerVersion() {
     try {
         if (typeof fetchLatestWaWebVersion === 'function') {
@@ -665,20 +679,7 @@ async function startBot() {
 
             if (!fromMe && !licenciaActiva()) return;
 
-            let realNumber = null;
-            const participantAlt = msg.key?.participantAlt;
-            if (participantAlt) {
-                realNumber = participantAlt.split('@')[0].split(':')[0];
-            }
-            if (!realNumber && msg.key?.participantPn) {
-                realNumber = msg.key.participantPn.split('@')[0].split(':')[0];
-            }
-            if (!realNumber && msg.key?.participant) {
-                realNumber = msg.key.participant.split('@')[0].split(':')[0];
-            }
-            if (!realNumber && !isGroup && sender?.endsWith('@s.whatsapp.net')) {
-                realNumber = sender.split('@')[0];
-            }
+            const realNumber = extraerNumeroReal(msg, sender);
 
             if (isGroup && fromMe) {
                 const textoRapido = msg.message.conversation ||
@@ -746,6 +747,7 @@ async function startBot() {
     }
 }
 
+// ==================== PANEL WEB ====================
 const app = express();
 app.use(express.json());
 
@@ -1221,11 +1223,13 @@ app.get('/api/zonas-lista', (req, res) => {
     res.json(lista);
 });
 
+// ==================== HISTORIAL ====================
 app.get('/api/historial', (req, res) => {
     const ordenado = [...historial].sort((a, b) => b.timestamp - a.timestamp);
     res.json(ordenado);
 });
 
+// ==================== TELÉFONO ====================
 app.post('/api/phone', async (req, res) => {
     const { phoneNumber } = req.body;
     const soloDigitos = String(phoneNumber).replace(/\D/g, '');
@@ -1288,6 +1292,7 @@ app.listen(PORT, '127.0.0.1', () => {
     console.log('');
 });
 
+// ==================== INICIO ====================
 console.log('🚀 BOT INICIADO\n');
 
 if (!fs.existsSync(CONFIG_PATH)) {
