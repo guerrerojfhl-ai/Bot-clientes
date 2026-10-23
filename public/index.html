@@ -112,6 +112,73 @@
         .btn-icon:active { transform: scale(0.95); }
         .btn-icon.activo { border-color: var(--accent); box-shadow: 0 0 12px var(--accent-glow); }
 
+        .cartera-bar {
+            position: sticky;
+            top: 64px;
+            z-index: 99;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 10px 16px;
+            display: none;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            box-shadow: var(--shadow-sm);
+            backdrop-filter: blur(10px);
+            flex-wrap: wrap;
+        }
+        .cartera-bar.visible { display: flex; }
+        .cartera-info { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+        .cartera-stat { display: flex; flex-direction: column; gap: 1px; }
+        .cartera-stat .num {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--accent);
+            line-height: 1;
+        }
+        .cartera-stat .lbl {
+            font-size: 10px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+        .cartera-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+        .cartera-actions button {
+            width: auto;
+            padding: 8px 12px;
+            font-size: 12px;
+            margin: 0;
+            border-radius: 8px;
+        }
+
+        .pendientes-badge {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, var(--yellow), #d97706);
+            color: #000;
+            padding: 14px 18px;
+            border-radius: 50px;
+            font-weight: 800;
+            font-size: 14px;
+            box-shadow: 0 8px 24px rgba(245, 158, 11, 0.5);
+            cursor: pointer;
+            z-index: 999;
+            display: none;
+            align-items: center;
+            gap: 8px;
+            animation: pulse 2s infinite;
+            border: none;
+            width: auto;
+            margin: 0;
+        }
+        .pendientes-badge.visible { display: flex; }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
         .container { max-width: 900px; margin: 0 auto; padding: 16px; }
 
         h1 { font-size: 24px; margin-bottom: 16px; }
@@ -578,6 +645,129 @@
             box-shadow: none;
         }
 
+        .cartera-toggle {
+            width: 54px;
+            height: 30px;
+            border-radius: 15px;
+            background: var(--bg-input);
+            border: 2px solid var(--border);
+            position: relative;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            padding: 0;
+            margin: 0;
+            flex-shrink: 0;
+        }
+        .cartera-toggle::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            transition: all 0.2s ease;
+        }
+        .cartera-toggle.on {
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+        .cartera-toggle.on::after {
+            left: 26px;
+            background: #fff;
+        }
+
+        .confirm-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.75);
+            backdrop-filter: blur(4px);
+            z-index: 1500;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+        .confirm-overlay.active { display: flex; animation: fadeIn 0.2s ease; }
+        .confirm-box {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 24px;
+            max-width: 450px;
+            width: 100%;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-lg);
+            animation: slideUp 0.3s ease;
+        }
+        .confirm-box h3 {
+            font-size: 18px;
+            margin-bottom: 8px;
+            color: var(--accent);
+        }
+        .confirm-box .detalles {
+            background: var(--bg-input);
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 13px;
+            margin-bottom: 16px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+        .confirm-box .botones {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+        }
+        .confirm-box .botones button { flex: 1; }
+        .confirm-box .monto-input {
+            margin-top: 16px;
+            padding: 14px;
+            background: var(--bg-input);
+            border-radius: 10px;
+            border: 1px solid var(--border);
+        }
+        .confirm-box .monto-input label {
+            display: block;
+            font-size: 12px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            margin-bottom: 8px;
+        }
+        .confirm-box .monto-input input {
+            font-size: 20px;
+            font-weight: 700;
+            text-align: center;
+            padding: 12px;
+            margin-bottom: 0;
+            color: var(--accent);
+        }
+
+        .filtros-dia {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+        .filtros-dia button {
+            width: auto;
+            padding: 6px 12px;
+            font-size: 11px;
+            margin: 0;
+            background: var(--bg-hover);
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+            font-weight: 600;
+            border-radius: 8px;
+        }
+        .filtros-dia button.activo {
+            background: var(--accent);
+            color: #000;
+            border-color: var(--accent);
+        }
+
         @media (max-width: 480px) {
             .header-title { font-size: 14px; }
             .header-logo { font-size: 24px; }
@@ -585,6 +775,9 @@
             .card { padding: 14px; }
             .stat-box .num { font-size: 24px; }
             .pairing-code { font-size: 28px; letter-spacing: 4px; }
+            .cartera-stat .num { font-size: 16px; }
+            .cartera-stat .lbl { font-size: 9px; }
+            .cartera-bar { padding: 8px 12px; top: 60px; }
         }
     </style>
 </head>
@@ -603,6 +796,30 @@
             <button class="btn-icon" onclick="cargarTodo()" title="Actualizar">🔄</button>
         </div>
     </header>
+
+    <div class="cartera-bar" id="cartera-bar">
+        <div class="cartera-info">
+            <div class="cartera-stat">
+                <span class="num" id="cartera-pedidos">0</span>
+                <span class="lbl">Pedidos hoy</span>
+            </div>
+            <div class="cartera-stat">
+                <span class="num" id="cartera-ingresos">$0</span>
+                <span class="lbl">Ingresos hoy</span>
+            </div>
+        </div>
+        <div class="cartera-actions">
+            <button class="gray" onclick="abrirHistorialCartera()">📋 Historial</button>
+            <button class="cartera-toggle on" id="cartera-toggle" onclick="toggleCartera()" title="Activar/desactivar cartera"></button>
+        </div>
+    </div>
+
+    <div class="cartera-bar" id="cartera-bar-off" style="display:flex;">
+        <div class="cartera-info">
+            <span style="font-size:13px;color:var(--text-secondary);">💼 Cartera Virtual desactivada</span>
+        </div>
+        <button class="cartera-toggle" id="cartera-toggle-off" onclick="toggleCartera()" title="Activar cartera"></button>
+    </div>
 
     <div class="container">
         <div class="card" id="aviso-calentamiento">
@@ -710,6 +927,10 @@
         <div id="zonas-container"></div>
     </div>
 
+    <button class="pendientes-badge" id="pendientes-badge" onclick="abrirColaPendientes()">
+        🔔 <span id="pendientes-count">0</span> por confirmar
+    </button>
+
     <div class="modal-overlay" id="modal-copiar">
         <div class="modal">
             <h3>📋 Copiar a otra zona</h3>
@@ -733,6 +954,42 @@
         </div>
     </div>
 
+    <div class="modal-overlay" id="modal-historial-cartera">
+        <div class="modal">
+            <h3>📋 Historial de la Cartera</h3>
+            <div class="filtros-dia" id="filtros-historial">
+                <button class="activo" data-filtro="hoy" onclick="filtrarHistorial('hoy')">Hoy</button>
+                <button data-filtro="ayer" onclick="filtrarHistorial('ayer')">Ayer</button>
+                <button data-filtro="semana" onclick="filtrarHistorial('semana')">Esta semana</button>
+                <button data-filtro="todo" onclick="filtrarHistorial('todo')">Todo</button>
+            </div>
+            <div id="historial-cartera-lista" style="max-height: 400px; overflow-y: auto;">Cargando...</div>
+            <div class="modal-actions">
+                <button class="gray" onclick="cerrarHistorialCartera()">Cerrar</button>
+                <button class="danger" onclick="reiniciarCartera()">🔄 Reiniciar contadores</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="confirm-overlay" id="confirm-pedido">
+        <div class="confirm-box">
+            <h3>🤖 El bot respondió "Y"</h3>
+            <div class="detalles" id="confirm-detalles">
+                Cargando...
+            </div>
+            <p style="font-size:14px;font-weight:600;margin-bottom:10px;">¿Ganaste el pedido?</p>
+            <div class="botones">
+                <button class="danger" onclick="confirmarPedido(false)">❌ No, perdí</button>
+                <button onclick="confirmarPedido(true)">✅ Sí, gané</button>
+            </div>
+            <div class="monto-input" id="monto-input-container" style="display:none;">
+                <label>💵 Monto del envío</label>
+                <input type="number" id="monto-envio" placeholder="40" min="0" step="1" value="40">
+                <button style="margin-top:12px;" onclick="guardarMonto()">💰 Confirmar con este monto</button>
+            </div>
+        </div>
+    </div>
+
     <div class="toast" id="toast">✅ Listo</div>
 
     <script>
@@ -749,6 +1006,13 @@
         let fallosConsecutivos = 0;
         const MAX_FALLOS_ANTES_DE_AVISO = 3;
         let avisoBotActivo = false;
+
+        // ==================== CARTERA ====================
+        let carteraEstado = { activa: false, pedidosHoy: 0, ingresosHoy: 0, pendientes: 0 };
+        let colaPendientes = [];
+        let pedidoActual = null;
+        let historialCarteraCompleto = [];
+        let filtroHistorialActual = 'hoy';
 
         function toggleTema() {
             document.body.classList.toggle('light');
@@ -775,21 +1039,19 @@
         function actualizarBotonNotif() {
             const btn = document.getElementById('btn-notif');
             if (!btn) return;
-
             if (!('Notification' in window)) {
                 btn.textContent = '🔕';
                 btn.title = 'Tu navegador no soporta notificaciones';
                 btn.classList.remove('activo');
                 return;
             }
-
             if (Notification.permission === 'granted') {
                 btn.textContent = '🔔';
                 btn.title = 'Notificaciones activadas';
                 btn.classList.add('activo');
             } else if (Notification.permission === 'denied') {
                 btn.textContent = '🔕';
-                btn.title = 'Notificaciones bloqueadas. Actívalas en ajustes del navegador';
+                btn.title = 'Notificaciones bloqueadas';
                 btn.classList.remove('activo');
             } else {
                 btn.textContent = '🔔';
@@ -804,7 +1066,6 @@
                 actualizarBotonNotif();
                 return;
             }
-
             if (Notification.permission === 'granted') {
                 if (!silencioso) {
                     try {
@@ -819,47 +1080,39 @@
                 actualizarBotonNotif();
                 return;
             }
-
             if (Notification.permission === 'denied') {
                 if (!silencioso) {
-                    toast('❌ Bloqueaste las notificaciones. Actívalas desde los ajustes del navegador', true);
+                    toast('❌ Bloqueaste las notificaciones', true);
                 }
                 actualizarBotonNotif();
                 return;
             }
-
             try {
                 const permiso = await Notification.requestPermission();
-                
                 if (permiso === 'granted') {
                     toast('✅ Notificaciones activadas');
                     try {
                         new Notification('🤖 BotClientes', {
-                            body: '¡Listo! Recibirás una notificación cuando el bot responda',
+                            body: '¡Listo! Recibirás notificaciones',
                             icon: '/icon-192.png',
                             tag: 'bienvenida'
                         });
                     } catch (e) {}
                 } else {
-                    if (!silencioso) toast('❌ No se activaron las notificaciones', true);
+                    if (!silencioso) toast('❌ No se activaron', true);
                 }
-            } catch (e) {
-                console.warn('Error pidiendo permiso de notificaciones:', e);
-            }
-            
+            } catch (e) {}
             actualizarBotonNotif();
         }
 
         async function mostrarNotificacion(titulo, cuerpo) {
             if (!('Notification' in window)) return;
             if (Notification.permission !== 'granted') return;
-
             try {
                 const registration = await Promise.race([
                     navigator.serviceWorker.ready,
                     new Promise((_, reject) => setTimeout(() => reject(new Error('SW timeout')), 3000))
                 ]);
-
                 await registration.showNotification(titulo, {
                     body: cuerpo,
                     icon: '/icon-192.png',
@@ -868,10 +1121,7 @@
                     requireInteraction: false,
                     silent: false
                 });
-                console.log('✅ Notificación enviada vía SW');
-            } catch (e) {
-                console.warn('No se pudo mostrar notificación vía SW:', e.message);
-            }
+            } catch (e) {}
         }
 
         async function cargarTodo() {
@@ -879,6 +1129,8 @@
             await cargarConfig();
             await cargarHistorial();
             await cargarEstadoCalentamiento();
+            await cargarCartera();
+            await cargarPendientes();
         }
 
         async function cargarStatus() {
@@ -886,16 +1138,12 @@
                 const r = await fetch('/api/status');
                 if (!r.ok) throw new Error('HTTP ' + r.status);
                 const d = await r.json();
-
                 fallosConsecutivos = 0;
                 if (avisoBotActivo) ocultarAvisoBot();
-
                 const el = document.getElementById('estado-conexion');
                 el.textContent = d.conectado ? '● CONECTADO' : '● DESCONECTADO';
                 el.className = 'status ' + (d.conectado ? 'on' : 'off');
-
                 document.getElementById('numero-info').textContent = 'Número: ' + (d.numeroConectado || '--');
-
                 const li = d.licencia;
                 const licInfo = document.getElementById('licencia-info');
                 if (li && li.valida) {
@@ -905,10 +1153,8 @@
                     licInfo.textContent = '❌ ' + (li?.razon || 'SIN LICENCIA');
                     licInfo.className = 'info warn';
                 }
-
                 document.getElementById('licencia-detalle').textContent =
                     li?.valida ? `Autorizada para: ${d.numeroConectado}` : (li?.razon || '--');
-
                 if (d.pairingCode && !d.conectado) {
                     document.getElementById('pairing-card').style.display = 'block';
                     document.getElementById('pairing-code').textContent = d.pairingCode;
@@ -917,8 +1163,6 @@
                 }
             } catch (e) {
                 fallosConsecutivos++;
-                console.error('Fallo al consultar estado (' + fallosConsecutivos + '):', e);
-
                 if (fallosConsecutivos >= MAX_FALLOS_ANTES_DE_AVISO) {
                     mostrarAvisoBot();
                     const el = document.getElementById('estado-conexion');
@@ -931,23 +1175,21 @@
         function mostrarAvisoBot() {
             if (avisoBotActivo) return;
             avisoBotActivo = true;
-
             const aviso = document.createElement('div');
             aviso.id = 'aviso-bot';
             aviso.style.cssText = `
                 position: fixed;
-                top: 80px; left: 16px; right: 16px;
+                top: 120px; left: 16px; right: 16px;
                 background: linear-gradient(135deg, var(--red), #dc2626);
                 color: #fff; padding: 16px; border-radius: 14px;
                 font-weight: 600; z-index: 2000;
                 display: flex; justify-content: space-between; align-items: center;
                 box-shadow: 0 10px 30px rgba(239, 68, 68, 0.5);
-                animation: slideDown 0.3s ease;
             `;
             aviso.innerHTML = `
                 <div style="display:flex;flex-direction:column;gap:3px;flex:1;">
                     <span style="font-size:14px;">⚠️ El bot no responde</span>
-                    <span style="font-size:11px;opacity:0.9;font-weight:400;">Reinicia el bot para solucionarlo.</span>
+                    <span style="font-size:11px;opacity:0.9;font-weight:400;">Reinicia el bot.</span>
                 </div>
                 <button onclick="location.reload()" style="
                     background:#000;color:#fff;border:none;padding:8px 14px;
@@ -990,15 +1232,244 @@
             document.getElementById('stat-activas').textContent = activas;
         }
 
+        // ==================== CARTERA: FETCH ====================
+        async function cargarCartera() {
+            try {
+                const r = await fetch('/api/cartera');
+                const d = await r.json();
+                carteraEstado = d;
+                renderCartera();
+            } catch (e) { console.error(e); }
+        }
+
+        function renderCartera() {
+            const barOn = document.getElementById('cartera-bar');
+            const barOff = document.getElementById('cartera-bar-off');
+            const toggleOn = document.getElementById('cartera-toggle');
+            const toggleOff = document.getElementById('cartera-toggle-off');
+            const pedidos = document.getElementById('cartera-pedidos');
+            const ingresos = document.getElementById('cartera-ingresos');
+
+            if (carteraEstado.activa) {
+                barOn.style.display = 'flex';
+                barOff.style.display = 'none';
+                toggleOn.classList.add('on');
+                pedidos.textContent = carteraEstado.pedidosHoy;
+                ingresos.textContent = '$' + carteraEstado.ingresosHoy;
+            } else {
+                barOn.style.display = 'none';
+                barOff.style.display = 'flex';
+                toggleOff.classList.remove('on');
+            }
+
+            // Badge de pendientes
+            const badge = document.getElementById('pendientes-badge');
+            const count = document.getElementById('pendientes-count');
+            if (carteraEstado.pendientes > 0) {
+                badge.classList.add('visible');
+                count.textContent = carteraEstado.pendientes;
+            } else {
+                badge.classList.remove('visible');
+            }
+        }
+
+        async function toggleCartera() {
+            try {
+                const r = await fetch('/api/cartera/toggle', { method: 'POST' });
+                const d = await r.json();
+                if (d.ok) {
+                    toast(d.activa ? '💼 Cartera activada' : '💼 Cartera desactivada');
+                    await cargarCartera();
+                }
+            } catch (e) {
+                toast('❌ Error', true);
+            }
+        }
+
+        async function cargarPendientes() {
+            try {
+                const r = await fetch('/api/cartera/pendientes');
+                colaPendientes = await r.json();
+            } catch (e) { console.error(e); }
+        }
+
+        async function abrirColaPendientes() {
+            await cargarPendientes();
+            if (colaPendientes.length === 0) {
+                toast('No hay pedidos pendientes');
+                return;
+            }
+            mostrarSiguientePendiente();
+        }
+
+        function mostrarSiguientePendiente() {
+            if (colaPendientes.length === 0) {
+                document.getElementById('confirm-pedido').classList.remove('active');
+                pedidoActual = null;
+                cargarCartera();
+                return;
+            }
+
+            pedidoActual = colaPendientes[0];
+            const detalles = document.getElementById('confirm-detalles');
+            const hace = Math.floor((Date.now() - pedidoActual.timestamp) / 1000);
+            const haceTexto = hace < 60 ? `hace ${hace}s` :
+                              hace < 3600 ? `hace ${Math.floor(hace/60)}min` :
+                              `hace ${Math.floor(hace/3600)}h`;
+
+            detalles.innerHTML = `
+                <div style="margin-bottom:6px;"><b>Zona:</b> ${escapeHtml(pedidoActual.zonaNombre)}</div>
+                <div style="margin-bottom:6px;"><b>Grupo:</b> ${escapeHtml(pedidoActual.grupo || '')}</div>
+                <div style="margin-bottom:6px;"><b>Número:</b> ${escapeHtml(pedidoActual.numero || 'desconocido')}</div>
+                <div style="color:var(--text-muted);font-size:12px;">${haceTexto}</div>
+                ${colaPendientes.length > 1 ? `<div style="margin-top:8px;color:var(--yellow);font-size:12px;">📬 ${colaPendientes.length - 1} más pendientes</div>` : ''}
+            `;
+
+            document.getElementById('monto-input-container').style.display = 'none';
+            document.getElementById('confirm-pedido').classList.add('active');
+        }
+
+        async function confirmarPedido(gano) {
+            if (!pedidoActual) return;
+
+            if (gano) {
+                document.getElementById('monto-input-container').style.display = 'block';
+                document.getElementById('monto-envio').focus();
+                document.getElementById('monto-envio').select();
+            } else {
+                await enviarConfirmacion(false, 0);
+            }
+        }
+
+        async function guardarMonto() {
+            const monto = document.getElementById('monto-envio').value;
+            if (!monto || Number(monto) < 0) {
+                toast('❌ Monto inválido', true);
+                return;
+            }
+            await enviarConfirmacion(true, Number(monto));
+        }
+
+        async function enviarConfirmacion(gano, monto) {
+            if (!pedidoActual) return;
+            try {
+                const r = await fetch('/api/cartera/confirmar', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        pedidoId: pedidoActual.id,
+                        gano: gano,
+                        monto: monto
+                    })
+                });
+                const d = await r.json();
+                if (d.ok) {
+                    toast(gano ? `✅ +$${monto} registrado` : '❌ Descartado');
+                    colaPendientes.shift();
+                    await cargarCartera();
+                    mostrarSiguientePendiente();
+                } else {
+                    toast('❌ ' + (d.error || 'Error'), true);
+                }
+            } catch (e) {
+                toast('❌ Error de red', true);
+            }
+        }
+
+        async function abrirHistorialCartera() {
+            document.getElementById('modal-historial-cartera').classList.add('active');
+            await cargarHistorialCartera();
+        }
+
+        function cerrarHistorialCartera() {
+            document.getElementById('modal-historial-cartera').classList.remove('active');
+        }
+
+        async function cargarHistorialCartera() {
+            try {
+                const r = await fetch('/api/cartera/historial');
+                historialCarteraCompleto = await r.json();
+                renderHistorialCartera();
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function filtrarHistorial(filtro) {
+            filtroHistorialActual = filtro;
+            document.querySelectorAll('#filtros-historial button').forEach(b => {
+                b.classList.toggle('activo', b.dataset.filtro === filtro);
+            });
+            renderHistorialCartera();
+        }
+
+        function renderHistorialCartera() {
+            const cont = document.getElementById('historial-cartera-lista');
+            let items = historialCarteraCompleto;
+
+            const ahora = new Date();
+            const hoyInicio = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate()).getTime();
+            const ayerInicio = hoyInicio - 86400000;
+            const semanaInicio = hoyInicio - (6 * 86400000);
+
+            if (filtroHistorialActual === 'hoy') {
+                items = items.filter(i => i.timestamp >= hoyInicio);
+            } else if (filtroHistorialActual === 'ayer') {
+                items = items.filter(i => i.timestamp >= ayerInicio && i.timestamp < hoyInicio);
+            } else if (filtroHistorialActual === 'semana') {
+                items = items.filter(i => i.timestamp >= semanaInicio);
+            }
+
+            if (items.length === 0) {
+                cont.innerHTML = '<p class="vacio">No hay pedidos en este período.</p>';
+                return;
+            }
+
+            const total = items.reduce((s, i) => s + i.monto, 0);
+
+            cont.innerHTML = `
+                <div style="background:rgba(16,185,129,0.1);border:1px solid var(--accent);border-radius:10px;padding:12px;margin-bottom:12px;text-align:center;">
+                    <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Total del período</div>
+                    <div style="font-size:28px;font-weight:800;color:var(--accent);">$${total}</div>
+                    <div style="font-size:12px;color:var(--text-secondary);">${items.length} pedido${items.length !== 1 ? 's' : ''}</div>
+                </div>
+            ` + items.map(i => {
+                const fecha = new Date(i.timestamp);
+                const fechaTexto = fecha.toLocaleString('es-MX', { 
+                    day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' 
+                });
+                return `
+                    <div class="historial-item">
+                        <span class="zona">${escapeHtml(i.zona)}</span>
+                        · 💰 <b>$${i.monto}</b>
+                        <br><span class="tiempo">${fechaTexto}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function reiniciarCartera() {
+            if (!confirm('¿Reiniciar contadores del día?\n\nEl historial NO se borra.')) return;
+            try {
+                const r = await fetch('/api/cartera/reiniciar', { method: 'POST' });
+                const d = await r.json();
+                if (d.ok) {
+                    toast('🔄 Contadores reiniciados');
+                    await cargarCartera();
+                }
+            } catch (e) {
+                toast('❌ Error', true);
+            }
+        }
+
+        // ==================== CALENTAMIENTO ====================
         async function cargarEstadoCalentamiento() {
             try {
                 const r = await fetch('/api/prewarms/estado');
                 const data = await r.json();
-
                 const total = data.totalGrupos;
                 const calentados = data.calentados;
                 const frios = data.frios;
-                const ttl = data.ttlMinutos;
                 const porcentaje = total > 0 ? Math.round((calentados / total) * 100) : 0;
 
                 const avisoTexto = document.getElementById('aviso-texto');
@@ -1011,42 +1482,37 @@
                     avisoCard.style.borderColor = 'var(--border)';
                     avisoCard.style.background = 'var(--bg-card)';
                 } else if (calentados === total) {
-                    avisoTexto.innerHTML = `✅ <b>Todos los servidores están calentados</b> (${calentados}/${total} grupos). Los mensajes se enviarán rápido.`;
+                    avisoTexto.innerHTML = `✅ <b>Todos los servidores están calentados</b> (${calentados}/${total} grupos).`;
                     barraProgreso.style.width = '100%';
                     avisoCard.style.borderColor = 'var(--accent)';
-                    avisoCard.style.background = 'linear-gradient(135deg, var(--bg-card), rgba(16, 185, 129, 0.1))';
                 } else if (calentados === 0) {
-                    avisoTexto.innerHTML = `❄️ <b>Ningún servidor está calentado</b> (0/${total} grupos). Haz un prewarm para calentarlos.`;
+                    avisoTexto.innerHTML = `❄️ <b>Ningún servidor está calentado</b> (0/${total} grupos).`;
                     barraProgreso.style.width = '0%';
                     avisoCard.style.borderColor = 'var(--blue)';
-                    avisoCard.style.background = 'linear-gradient(135deg, var(--bg-card), rgba(59, 130, 246, 0.1))';
                 } else {
-                    avisoTexto.innerHTML = `⚠️ <b>Solo ${calentados}/${total} grupos calentados</b> (${porcentaje}%). Haz prewarm para los ${frios} grupos restantes.`;
+                    avisoTexto.innerHTML = `⚠️ <b>Solo ${calentados}/${total} grupos calentados</b> (${porcentaje}%).`;
                     barraProgreso.style.width = porcentaje + '%';
                     avisoCard.style.borderColor = 'var(--yellow)';
-                    avisoCard.style.background = 'linear-gradient(135deg, var(--bg-card), rgba(245, 158, 11, 0.1))';
                 }
 
                 document.getElementById('count-calentados').textContent = calentados;
                 const listaCalentados = document.getElementById('lista-calentados');
                 if (data.listaCalentados.length === 0) {
-                    listaCalentados.innerHTML = '<p class="info">(ninguno calentado todavía)</p>';
+                    listaCalentados.innerHTML = '<p class="info">(ninguno calentado)</p>';
                 } else {
                     listaCalentados.innerHTML = data.listaCalentados.map(g => {
                         const min = Math.floor(g.expiraEn / 60);
                         const seg = g.expiraEn % 60;
                         const expiraTexto = min > 0 ? `${min}min ${seg}s` : `${seg}s`;
-
                         const nombreGrupo = etiqueta(g.grupo);
                         const tieneAlias = nombreGrupo !== g.grupo;
-
                         return `
                             <div class="lista-item calentado">
                                 <div class="item-info">
                                     <b>🔥 ${escapeHtml(tieneAlias ? nombreGrupo : g.grupo)}</b>
                                     <small>${tieneAlias ? escapeHtml(g.grupo) + '<br>' : ''}Zonas: ${g.zonas.map(z => escapeHtml(z)).join(', ')}</small>
                                 </div>
-                                <span class="badge ok" style="font-size:10px;">${expiraTexto}</span>
+                                <span class="badge ok">${expiraTexto}</span>
                             </div>
                         `;
                     }).join('');
@@ -1060,7 +1526,6 @@
                     listaFrios.innerHTML = data.listaFrios.map(g => {
                         const nombreGrupo = etiqueta(g.grupo);
                         const tieneAlias = nombreGrupo !== g.grupo;
-
                         return `
                             <div class="lista-item frio">
                                 <div class="item-info">
@@ -1071,25 +1536,20 @@
                         `;
                     }).join('');
                 }
-            } catch (e) {
-                console.error('Error cargando estado de calentamiento:', e);
-            }
+            } catch (e) { console.error(e); }
         }
 
         function filtrarZonas() {
             const q = document.getElementById('buscar').value.toLowerCase().trim();
-
             if (!q) {
                 document.querySelectorAll('.lista-item').forEach(i => i.style.display = '');
                 document.querySelectorAll('.card.zona').forEach(c => c.style.display = '');
                 return;
             }
-
             document.querySelectorAll('.lista-item').forEach(item => {
                 const texto = item.textContent.toLowerCase();
                 item.style.display = texto.includes(q) ? '' : 'none';
             });
-
             document.querySelectorAll('.card.zona').forEach(card => {
                 const items = card.querySelectorAll('.lista-item');
                 const hayVisibles = Array.from(items).some(i => i.style.display !== 'none');
@@ -1115,7 +1575,7 @@
                         ${tieneAlias ? `<b>${escapeHtml(alias)}</b>` : ''}
                         <small style="${tieneAlias ? '' : 'opacity:0.9; font-size:12px;'}">${escapeHtml(valor)}</small>
                     </div>
-                    <button class="copy" onclick="abrirModalCopiar('${escapeHtml(valor)}')" title="Copiar a otra zona">📋</button>
+                    <button class="copy" onclick="abrirModalCopiar('${escapeHtml(valor)}')" title="Copiar">📋</button>
                     <button class="edit" onclick="relabel('${escapeHtml(valor)}')" title="Renombrar">✏️</button>
                     <button onclick="quitar('${zonaKey}','${tipo}','${escapeHtml(valor)}')" title="Eliminar">🗑️</button>
                 </div>
@@ -1152,7 +1612,6 @@
                 const calentadosZona = z.calentados || 0;
                 const totalGruposZona = z.totalGrupos || 0;
                 const todosCalentados = totalGruposZona > 0 && calentadosZona === totalGruposZona;
-
                 const abierta = !!zonasAbiertas[key];
 
                 html += `
@@ -1160,8 +1619,8 @@
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
                         <div style="display:flex;align-items:center;gap:8px;">
                             <div style="display:flex;flex-direction:column;gap:2px;">
-                                <button class="orden-btn" onclick="reordenarZona('${key}','up')" title="Mover arriba">▲</button>
-                                <button class="orden-btn" onclick="reordenarZona('${key}','down')" title="Mover abajo">▼</button>
+                                <button class="orden-btn" onclick="reordenarZona('${key}','up')" title="Arriba">▲</button>
+                                <button class="orden-btn" onclick="reordenarZona('${key}','down')" title="Abajo">▼</button>
                             </div>
                             <h3 style="margin:0;font-size:18px;">${escapeHtml(z.nombre)}</h3>
                         </div>
@@ -1239,7 +1698,7 @@
         }
 
         async function renombrar(zonaKey) {
-            const nuevo = prompt('Nuevo nombre para la zona:', zonas[zonaKey].nombre);
+            const nuevo = prompt('Nuevo nombre:', zonas[zonaKey].nombre);
             if (!nuevo || !nuevo.trim()) return;
             const r = await fetch('/api/zona/renombrar', {
                 method: 'POST',
@@ -1254,9 +1713,8 @@
         }
 
         async function nuevaZona() {
-            const nombre = prompt('Nombre de la nueva zona:\n(ej: Sucursal Norte, Zona 7, etc.)');
+            const nombre = prompt('Nombre de la nueva zona:');
             if (!nombre || !nombre.trim()) return;
-
             const r = await fetch('/api/zona/crear', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -1264,7 +1722,7 @@
             });
             const d = await r.json();
             if (d.ok) {
-                toast('✅ Zona "' + d.nombre + '" creada');
+                toast('✅ Zona creada');
                 await cargarConfig();
                 await cargarZonasLista();
             } else {
@@ -1274,10 +1732,8 @@
 
         async function eliminarZona(zonaKey) {
             const nombre = zonas[zonaKey]?.nombre || zonaKey;
-
-            if (!confirm(`¿Eliminar la zona "${nombre}"?\n\nSe borrarán todos sus grupos, números y keywords.`)) return;
-            if (!confirm(`⚠️ ÚLTIMA CONFIRMACIÓN\n\n¿Seguro que quieres eliminar "${nombre}"?`)) return;
-
+            if (!confirm(`¿Eliminar la zona "${nombre}"?`)) return;
+            if (!confirm(`⚠️ ¿Seguro?`)) return;
             const r = await fetch('/api/zona/eliminar', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -1288,19 +1744,13 @@
                 toast('🗑️ Zona eliminada');
                 await cargarConfig();
                 await cargarZonasLista();
-            } else {
-                toast('❌ ' + (d.error || 'Error'), true);
             }
         }
 
         async function relabel(valor) {
             const actual = labels[valor] || '';
-            const nuevo = prompt(
-                `Alias para:\n${valor}\n\n(Deja vacío para quitar el alias)`,
-                actual
-            );
+            const nuevo = prompt(`Alias para:\n${valor}\n\n(Deja vacío para quitar)`, actual);
             if (nuevo === null) return;
-
             const r = await fetch('/api/zona/relabel', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -1312,8 +1762,6 @@
                 else delete labels[valor];
                 toast('✅ Alias actualizado');
                 cargarConfig();
-            } else {
-                toast('❌ ' + (d.error || 'Error'), true);
             }
         }
 
@@ -1321,25 +1769,20 @@
             const esKeyword = tipo === 'keywords';
             const esNumero = tipo.includes('numbers');
             const esGrupo = tipo.includes('groups');
-
             let msg = 'Valor a añadir:';
-            if (esGrupo) msg = 'ID del grupo (ej: 120363...@g.us):';
-            if (esNumero) msg = 'Número (ej: 5216691234567):';
-            if (esKeyword) msg = 'Keyword (ej: solicito):';
-
+            if (esGrupo) msg = 'ID del grupo:';
+            if (esNumero) msg = 'Número:';
+            if (esKeyword) msg = 'Keyword:';
             const valor = prompt(msg);
             if (!valor || !valor.trim()) return;
-
             let valorLimpio = valor.trim();
             if (esNumero) valorLimpio = valorLimpio.replace(/\D/g, '');
             if (esKeyword) valorLimpio = valorLimpio.toLowerCase();
-
             let label = null;
             if (!esKeyword) {
-                const l = prompt('Alias para identificar (opcional):', '');
+                const l = prompt('Alias (opcional):', '');
                 if (l && l.trim()) label = l.trim();
             }
-
             const r = await fetch('/api/zona/add', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -1349,15 +1792,12 @@
             if (d.ok) {
                 toast('✅ Añadido');
                 cargarConfig();
-            } else {
-                toast('❌ ' + (d.error || 'Error'), true);
             }
         }
 
         async function quitar(zonaKey, tipo, valor) {
             if (!confirm('¿Eliminar este elemento?\n\n' + valor)) return;
-            if (!confirm('⚠️ ÚLTIMA CONFIRMACIÓN\n\n¿Seguro que quieres eliminar:\n' + valor)) return;
-
+            if (!confirm('⚠️ ¿Seguro?')) return;
             const r = await fetch('/api/zona/remove', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -1397,12 +1837,10 @@
         function abrirModalCopiar(valor) {
             modalCopiarValor = valor;
             document.getElementById('modal-copiar-valor').textContent = valor;
-
             const selectZona = document.getElementById('modal-copiar-zona');
             selectZona.innerHTML = Object.entries(zonas).map(([key, z]) =>
                 `<option value="${key}">${escapeHtml(z.nombre)}</option>`
             ).join('');
-
             document.getElementById('modal-copiar').classList.add('active');
         }
 
@@ -1413,46 +1851,26 @@
 
         async function confirmarCopiar() {
             if (!modalCopiarValor) return;
-
             const destinoKey = document.getElementById('modal-copiar-zona').value;
             const tipo = document.getElementById('modal-copiar-tipo').value;
-
             const r = await fetch('/api/zona/copiar', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    destinoKey,
-                    tipo,
-                    valor: modalCopiarValor
-                })
+                body: JSON.stringify({ destinoKey, tipo, valor: modalCopiarValor })
             });
             const d = await r.json();
             if (d.ok) {
-                toast('✅ Copiado a ' + zonas[destinoKey].nombre);
+                toast('✅ Copiado');
                 cerrarModalCopiar();
                 cargarConfig();
-            } else {
-                toast('❌ ' + (d.error || 'Error'), true);
             }
         }
 
         async function guardarTelefono() {
             const tel = document.getElementById('phoneInput').value;
             if (!tel) return;
-
-            const confirmar = confirm(
-                '⚠️ ATENCIÓN\n\n' +
-                'Esto va a:\n' +
-                '1. Guardar el número: ' + tel + '\n' +
-                '2. Cerrar la sesión actual de WhatsApp\n' +
-                '3. Reiniciar el bot\n' +
-                '4. Generar un nuevo código de enlace\n\n' +
-                '¿Continuar?'
-            );
-            if (!confirmar) return;
-
+            if (!confirm('⚠️ Esto reiniciará el bot. ¿Continuar?')) return;
             toast('🔄 Reiniciando bot...');
-
             const r = await fetch('/api/phone', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -1466,17 +1884,12 @@
                     intentos++;
                     if (intentos >= 20) clearInterval(interval);
                 }, 2000);
-            } else {
-                toast('❌ ' + (d.error || 'Error'), true);
             }
         }
 
         async function regenerarPairing() {
             try {
-                const r = await fetch('/api/regenerar-pairing', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'}
-                });
+                const r = await fetch('/api/regenerar-pairing', { method: 'POST' });
                 const d = await r.json();
                 if (d.error) {
                     toast('❌ ' + d.error, true);
@@ -1520,18 +1933,12 @@
                 if (!r.ok) return;
                 const lista = await r.json();
                 renderHistorial(lista);
-
                 for (const h of lista) {
                     if (h.id > ultimoHistorialId && !historialNotificado.has(h.id)) {
                         if (ultimoHistorialId > 0) {
                             const numCorto = h.numero ? h.numero.slice(-4) : '????';
-                            
-                            toast(`✅ Bot respondió en ${h.zonaNombre} (…${numCorto})`);
-                            
-                            mostrarNotificacion(
-                                '🤖 Bot respondió',
-                                `En ${h.zonaNombre} al número …${numCorto}`
-                            );
+                            toast(`✅ Bot respondió en ${h.zonaNombre}`);
+                            mostrarNotificacion('🤖 Bot respondió', `En ${h.zonaNombre} al número …${numCorto}`);
                         }
                         historialNotificado.add(h.id);
                         if (h.id > ultimoHistorialId) ultimoHistorialId = h.id;
@@ -1546,7 +1953,6 @@
                 cont.innerHTML = '<div class="vacio">Aún no hay respuestas registradas.</div>';
                 return;
             }
-
             cont.innerHTML = lista.slice(0, 20).map(h => {
                 const hace = Math.floor((Date.now() - h.timestamp) / 1000);
                 const haceTexto = hace < 60 ? `hace ${hace}s` :
@@ -1582,45 +1988,32 @@
 
         function renderDetectados(lista) {
             const cont = document.getElementById('detectados');
-
             document.querySelectorAll('select[id^="zona-"]').forEach(sel => {
                 const jidOriginal = sel.dataset.jid;
-                if (jidOriginal) {
-                    zonaSeleccionadaPorDetectado[jidOriginal] = sel.value;
-                }
+                if (jidOriginal) zonaSeleccionadaPorDetectado[jidOriginal] = sel.value;
             });
-
             if (!lista || lista.length === 0) {
-                cont.innerHTML = '<div class="vacio">Sin detecciones aún.<br>Manda un "." en un grupo para detectarlo.</div>';
+                cont.innerHTML = '<div class="vacio">Sin detecciones aún.<br>Manda un "." en un grupo.</div>';
                 return;
             }
-
             cont.innerHTML = lista.map(d => {
                 const hace = Math.floor((Date.now() - d.ultimaVez) / 1000);
                 const haceTexto = hace < 60 ? `hace ${hace}s` :
                                   hace < 3600 ? `hace ${Math.floor(hace/60)}min` :
                                   `hace ${Math.floor(hace/3600)}h`;
-
                 const badgeImg = d.yaEnImageGroups ? '<span class="badge ok">YA EN IMÁGENES</span>' : '';
                 const badgeKw = d.yaEnKeywordGroups ? '<span class="badge ok">YA EN KEYWORDS</span>' : '';
-
                 const idLimpio = btoa(d.jid).replace(/=/g, '').replace(/\//g, '_').replace(/\+/g, '-');
-
                 const zonaGuardada = zonaSeleccionadaPorDetectado[d.jid];
-
                 const opcionesConSeleccion = zonasLista.map(z => {
                     const isSelected = zonaGuardada === z.key ? 'selected' : '';
                     return `<option value="${z.key}" ${isSelected}>${z.nombre}</option>`;
                 }).join('');
-
                 const aliasJid = etiqueta(d.jid);
                 const tieneAliasJid = aliasJid !== d.jid;
-
                 const aliasNum = d.numero ? etiqueta(d.numero) : null;
                 const tieneAliasNum = aliasNum && aliasNum !== d.numero;
-
                 const nombreGrupo = d.nombreGrupo || (tieneAliasJid ? aliasJid : null);
-
                 return `
                     <div class="detectado">
                         ${nombreGrupo ? `<div class="nombre-grupo">📛 ${escapeHtml(nombreGrupo)}</div>` : ''}
@@ -1629,32 +2022,22 @@
                             ${tieneAliasJid ? `<small>alias: ${escapeHtml(aliasJid)}</small>` : ''}
                         </div>
                         <div class="meta">
-                            ${d.numero ? '👤 ' + escapeHtml(tieneAliasNum ? aliasNum : d.numero) + (tieneAliasNum ? ` <small style="opacity:0.5;">(${d.numero})</small>` : '') + ' | ' : ''}
+                            ${d.numero ? '👤 ' + escapeHtml(tieneAliasNum ? aliasNum : d.numero) + ' | ' : ''}
                             📝 "${escapeHtml(d.ultimoTexto || '')}"
                             <br>${haceTexto} ${badgeImg}${badgeKw}
                         </div>
-
                         <select id="zona-${idLimpio}" data-jid="${d.jid}" onchange="guardarSeleccionZona('${d.jid}', this.value)">
                             ${opcionesConSeleccion}
                         </select>
-
                         <div class="acciones">
-                            <button onclick="aplicarDetectado('${d.jid}', null, 'image_groups', 'zona-${idLimpio}')">
-                                ➕ Imágenes
-                            </button>
-                            <button onclick="aplicarDetectado('${d.jid}', null, 'keyword_groups', 'zona-${idLimpio}')">
-                                ➕ Keywords
-                            </button>
+                            <button onclick="aplicarDetectado('${d.jid}', null, 'image_groups', 'zona-${idLimpio}')">➕ Imágenes</button>
+                            <button onclick="aplicarDetectado('${d.jid}', null, 'keyword_groups', 'zona-${idLimpio}')">➕ Keywords</button>
                             <button class="secondary" onclick="relabel('${d.jid}')" style="flex: 0 0 auto; min-width: 50px;">✏️</button>
                         </div>
                         ${d.numero ? `
                         <div class="acciones">
-                            <button class="secondary" onclick="aplicarDetectado(null, '${d.numero}', 'image_numbers', 'zona-${idLimpio}')">
-                                ➕ NumImg
-                            </button>
-                            <button class="secondary" onclick="aplicarDetectado(null, '${d.numero}', 'keyword_numbers', 'zona-${idLimpio}')">
-                                ➕ NumKw
-                            </button>
+                            <button class="secondary" onclick="aplicarDetectado(null, '${d.numero}', 'image_numbers', 'zona-${idLimpio}')">➕ NumImg</button>
+                            <button class="secondary" onclick="aplicarDetectado(null, '${d.numero}', 'keyword_numbers', 'zona-${idLimpio}')">➕ NumKw</button>
                         </div>` : ''}
                     </div>
                 `;
@@ -1668,12 +2051,10 @@
         async function aplicarDetectado(jid, numero, destino, selectId) {
             const select = document.getElementById(selectId);
             const zonaKey = select ? select.value : null;
-
             if (!zonaKey) {
                 toast('❌ Selecciona una zona', true);
                 return;
             }
-
             const r = await fetch('/api/detectados/aplicar', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -1681,16 +2062,14 @@
             });
             const d = await r.json();
             if (d.ok) {
-                toast('✅ Agregado a ' + destino);
+                toast('✅ Agregado');
                 await cargarDetectados();
                 await cargarConfig();
-            } else {
-                toast('❌ ' + (d.error || 'Error'), true);
             }
         }
 
         async function limpiarDetectados() {
-            if (!confirm('¿Limpiar toda la lista de detectados?')) return;
+            if (!confirm('¿Limpiar la lista?')) return;
             await fetch('/api/detectados/limpiar', { method: 'POST' });
             await cargarDetectados();
             toast('🗑️ Lista limpiada');
@@ -1701,7 +2080,6 @@
             if (input) {
                 input.oninput = filtrarZonas;
                 input.onkeydown = (e) => { if (e.key === 'Enter') e.preventDefault(); };
-                console.log('✅ Buscador conectado');
             }
         }
 
@@ -1713,27 +2091,34 @@
                 conectarBuscador();
                 actualizarBotonNotif();
                 if ('Notification' in window && Notification.permission === 'default') {
-                    setTimeout(() => {
-                        activarNotificaciones(true);
-                    }, 2000);
+                    setTimeout(() => activarNotificaciones(true), 2000);
                 }
             });
         } else {
             conectarBuscador();
             actualizarBotonNotif();
             if ('Notification' in window && Notification.permission === 'default') {
-                setTimeout(() => {
-                    activarNotificaciones(true);
-                }, 2000);
+                setTimeout(() => activarNotificaciones(true), 2000);
             }
         }
 
         setInterval(cargarStatus, 5000);
-        setInterval(() => {
+        setInterval(cargarCartera, 5000);
+        setInterval(async () => {
             const haySelectAbierto = document.activeElement?.tagName === 'SELECT';
-            if (!haySelectAbierto) {
-                cargarDetectados();
-                cargarHistorial();
+            const hayModalAbierto = document.querySelector('.modal-overlay.active, .confirm-overlay.active');
+            if (!haySelectAbierto && !hayModalAbierto) {
+                await cargarDetectados();
+                await cargarHistorial();
+                await cargarPendientes();
+                const badge = document.getElementById('pendientes-badge');
+                const count = document.getElementById('pendientes-count');
+                if (colaPendientes.length > 0) {
+                    badge.classList.add('visible');
+                    count.textContent = colaPendientes.length;
+                } else {
+                    badge.classList.remove('visible');
+                }
             }
         }, 5000);
         setInterval(cargarEstadoCalentamiento, 15000);
@@ -1747,20 +2132,14 @@
                     .catch(err => console.warn('⚠️ SW falló:', err));
             });
         }
-
         const isStandalone = window.matchMedia('(display-mode: standalone)').matches
                           || window.navigator.standalone === true;
-
-        if (isStandalone) {
-            document.body.classList.add('pwa-mode');
-        }
+        if (isStandalone) document.body.classList.add('pwa-mode');
     </script>
 
     <script>
         let deferredPrompt = null;
-
         window.addEventListener('beforeinstallprompt', (e) => {
-            console.log('✅ PWA instalable detectada');
             e.preventDefault();
             deferredPrompt = e;
             mostrarBannerInstalacion();
@@ -1770,57 +2149,38 @@
             if (window.matchMedia('(display-mode: standalone)').matches) return;
             if (localStorage.getItem('install-banner-cerrado') === '1') return;
             if (document.getElementById('install-banner')) return;
-
             const banner = document.createElement('div');
             banner.id = 'install-banner';
             banner.style.cssText = `
-                position: fixed;
-                bottom: 16px;
-                left: 16px;
-                right: 16px;
+                position: fixed; bottom: 16px; left: 16px; right: 16px;
                 background: linear-gradient(135deg, #10b981, #059669);
-                color: #fff;
-                padding: 16px;
-                border-radius: 14px;
-                font-weight: 600;
-                z-index: 1000;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
+                color: #fff; padding: 16px; border-radius: 14px;
+                font-weight: 600; z-index: 1000;
+                display: flex; justify-content: space-between; align-items: center;
                 box-shadow: 0 10px 30px rgba(16, 185, 129, 0.4);
-                animation: slideUp 0.3s ease;
             `;
             banner.innerHTML = `
                 <div style="display:flex;flex-direction:column;gap:3px;">
                     <span style="font-size:15px;">📲 Instalar BotClientes</span>
-                    <span style="font-size:12px;opacity:0.85;font-weight:400;">Accede más rápido desde tu pantalla</span>
+                    <span style="font-size:12px;opacity:0.85;font-weight:400;">Accede más rápido</span>
                 </div>
                 <div style="display:flex;gap:8px;">
-                    <button onclick="instalarPWA()" style="
-                        background:#000;color:#fff;border:none;padding:10px 18px;
-                        border-radius:8px;font-weight:bold;font-size:13px;
-                        width:auto;margin:0;cursor:pointer;
-                    ">Instalar</button>
-                    <button onclick="cerrarBanner()" style="
-                        background:transparent;color:#fff;border:none;padding:10px;
-                        font-size:16px;width:auto;margin:0;cursor:pointer;opacity:0.7;
-                    ">✕</button>
+                    <button onclick="instalarPWA()" style="background:#000;color:#fff;border:none;padding:10px 18px;border-radius:8px;font-weight:bold;font-size:13px;width:auto;margin:0;cursor:pointer;">Instalar</button>
+                    <button onclick="cerrarBanner()" style="background:transparent;color:#fff;border:none;padding:10px;font-size:16px;width:auto;margin:0;cursor:pointer;opacity:0.7;">✕</button>
                 </div>
             `;
-
             document.body.appendChild(banner);
         }
 
         async function instalarPWA() {
             if (!deferredPrompt) {
-                toast('No disponible. Usa el menú de Chrome → Instalar', true);
+                toast('No disponible. Usa el menú de Chrome', true);
                 return;
             }
             deferredPrompt.prompt();
             const { outcome } = await deferredPrompt.userChoice;
-            console.log('Resultado instalación:', outcome);
             if (outcome === 'accepted') {
-                toast('✅ Instalada correctamente');
+                toast('✅ Instalada');
                 document.getElementById('install-banner')?.remove();
             }
             deferredPrompt = null;
@@ -1832,14 +2192,9 @@
         }
 
         window.addEventListener('appinstalled', () => {
-            console.log('✅ PWA instalada');
             document.getElementById('install-banner')?.remove();
-            toast('🎉 App instalada en tu pantalla de inicio');
+            toast('🎉 App instalada');
         });
-
-        if (window.matchMedia('(display-mode: standalone)').matches) {
-            document.getElementById('install-banner')?.remove();
-        }
     </script>
 </body>
 </html>
