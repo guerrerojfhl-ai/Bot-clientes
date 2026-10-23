@@ -1081,9 +1081,7 @@
                 return;
             }
             if (Notification.permission === 'denied') {
-                if (!silencioso) {
-                    toast('❌ Bloqueaste las notificaciones', true);
-                }
+                if (!silencioso) toast('❌ Bloqueaste las notificaciones', true);
                 actualizarBotonNotif();
                 return;
             }
@@ -1262,7 +1260,6 @@
                 toggleOff.classList.remove('on');
             }
 
-            // Badge de pendientes
             const badge = document.getElementById('pendientes-badge');
             const count = document.getElementById('pendientes-count');
             if (carteraEstado.pendientes > 0) {
@@ -1927,22 +1924,32 @@
             }
         }
 
+        // ==================== HISTORIAL con refresco inteligente ====================
         async function cargarHistorial() {
             try {
                 const r = await fetch('/api/historial');
                 if (!r.ok) return;
                 const lista = await r.json();
                 renderHistorial(lista);
+
+                let huboNuevaRespuesta = false;
+
                 for (const h of lista) {
                     if (h.id > ultimoHistorialId && !historialNotificado.has(h.id)) {
                         if (ultimoHistorialId > 0) {
                             const numCorto = h.numero ? h.numero.slice(-4) : '????';
                             toast(`✅ Bot respondió en ${h.zonaNombre}`);
                             mostrarNotificacion('🤖 Bot respondió', `En ${h.zonaNombre} al número …${numCorto}`);
+                            huboNuevaRespuesta = true;
                         }
                         historialNotificado.add(h.id);
                         if (h.id > ultimoHistorialId) ultimoHistorialId = h.id;
                     }
+                }
+
+                // 🔽 Solo si hubo nueva respuesta, refrescar las zonas
+                if (huboNuevaRespuesta) {
+                    await cargarConfig();
                 }
             } catch (e) { console.error(e); }
         }
@@ -2102,6 +2109,7 @@
             }
         }
 
+        // 🔽 Intervals SIN refrescar zonas a lo bruto (no parpadea)
         setInterval(cargarStatus, 5000);
         setInterval(cargarCartera, 5000);
         setInterval(async () => {
@@ -2109,7 +2117,7 @@
             const hayModalAbierto = document.querySelector('.modal-overlay.active, .confirm-overlay.active');
             if (!haySelectAbierto && !hayModalAbierto) {
                 await cargarDetectados();
-                await cargarHistorial();
+                await cargarHistorial();  // este internamente llama cargarConfig solo si hay nueva respuesta
                 await cargarPendientes();
                 const badge = document.getElementById('pendientes-badge');
                 const count = document.getElementById('pendientes-count');
