@@ -1240,7 +1240,7 @@
             } catch (e) { console.error(e); }
         }
 
-        function renderCartera() {
+                function renderCartera() {
             const barOn = document.getElementById('cartera-bar');
             const barOff = document.getElementById('cartera-bar-off');
             const toggleOn = document.getElementById('cartera-toggle');
@@ -1248,12 +1248,14 @@
             const pedidos = document.getElementById('cartera-pedidos');
             const ingresos = document.getElementById('cartera-ingresos');
 
+            // 🔽 SIEMPRE actualizar los valores
+            pedidos.textContent = carteraEstado.pedidosHoy || 0;
+            ingresos.textContent = '$' + (carteraEstado.ingresosHoy || 0);
+
             if (carteraEstado.activa) {
                 barOn.style.display = 'flex';
                 barOff.style.display = 'none';
                 toggleOn.classList.add('on');
-                pedidos.textContent = carteraEstado.pedidosHoy;
-                ingresos.textContent = '$' + carteraEstado.ingresosHoy;
             } else {
                 barOn.style.display = 'none';
                 barOff.style.display = 'flex';
