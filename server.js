@@ -104,17 +104,12 @@ function agregarPendiente(zonaNombre, grupo, numero) {
 
 function verificarCorteDiario() {
     const ahora = new Date();
-    // 🔽 Fecha en hora CDMX (UTC-6)
-    const offsetCDMX = -6 * 60; // minutos
-    const ahoraCDMX = new Date(ahora.getTime() + (offsetCDMX - ahora.getTimezoneOffset()) * 60000);
+    const ahoraCDMX = new Date(ahora.getTime() - 6 * 60 * 60 * 1000);
     const fechaHoy = ahoraCDMX.toISOString().slice(0, 10);
-
-    // 🔽 Hora CDMX
-    const horaCDMX = ahoraCDMX.getHours();
+    const horaCDMX = ahoraCDMX.getUTCHours();
 
     const c = cargarCartera();
 
-    // 🔽 Reiniciar a las 6 AM CDMX si la fecha de corte es anterior a hoy
     if (horaCDMX >= 6 && c.fechaCorte !== fechaHoy) {
         if (c.pedidosHoy > 0 || c.ingresosHoy > 0) {
             console.log(`🔄 Corte diario: reiniciando cartera (${c.pedidosHoy} pedidos, $${c.ingresosHoy})`);
