@@ -2131,7 +2131,31 @@
                 setTimeout(() => activarNotificaciones(true), 2000);
             }
         }
+                // 🔽 Sincronizar cuando la pestaña/app vuelve a estar visible
+        document.addEventListener('visibilitychange', async () => {
+            if (document.visibilityState === 'visible') {
+                console.log('👀 Panel visible de nuevo — sincronizando...');
+                await cargarCartera();
+                await cargarStatus();
+                await cargarConfig();
+                await cargarPendientes();
+                // Actualizar badge de pendientes
+                const badge = document.getElementById('pendientes-badge');
+                const count = document.getElementById('pendientes-count');
+                if (colaPendientes.length > 0) {
+                    badge.classList.add('visible');
+                    count.textContent = colaPendientes.length;
+                } else {
+                    badge.classList.remove('visible');
+                }
+            }
+        });
 
+        // 🔽 También al recuperar el foco (cuando vuelve a la pestaña)
+        window.addEventListener('focus', async () => {
+            await cargarCartera();
+            await cargarStatus();
+        });
         setInterval(cargarStatus, 5000);
         setInterval(cargarCartera, 5000);
         setInterval(async () => {
