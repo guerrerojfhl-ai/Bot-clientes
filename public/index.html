@@ -1230,7 +1230,7 @@
             document.getElementById('stat-activas').textContent = activas;
         }
 
-        // ==================== CARTERA: FETCH ====================
+        // ==================== CARTERA ====================
         async function cargarCartera() {
             try {
                 const r = await fetch('/api/cartera');
@@ -1314,10 +1314,15 @@
                               hace < 3600 ? `hace ${Math.floor(hace/60)}min` :
                               `hace ${Math.floor(hace/3600)}h`;
 
+            const nombreGrupo = etiqueta(pedidoActual.grupo);
+            const nombreNumero = pedidoActual.numero ? etiqueta(pedidoActual.numero) : 'desconocido';
+            const tieneAliasGrupo = nombreGrupo !== pedidoActual.grupo;
+            const tieneAliasNumero = nombreNumero !== pedidoActual.numero;
+
             detalles.innerHTML = `
                 <div style="margin-bottom:6px;"><b>Zona:</b> ${escapeHtml(pedidoActual.zonaNombre)}</div>
-                <div style="margin-bottom:6px;"><b>Grupo:</b> ${escapeHtml(pedidoActual.grupo || '')}</div>
-                <div style="margin-bottom:6px;"><b>Número:</b> ${escapeHtml(pedidoActual.numero || 'desconocido')}</div>
+                <div style="margin-bottom:6px;"><b>Grupo:</b> ${escapeHtml(nombreGrupo)}${tieneAliasGrupo ? '' : ' <small style="opacity:0.5;">(sin alias)</small>'}</div>
+                <div style="margin-bottom:6px;"><b>Número:</b> ${escapeHtml(nombreNumero)}${tieneAliasNumero ? ` <small style="opacity:0.5;">(…${pedidoActual.numero.slice(-4)})</small>` : ''}</div>
                 <div style="color:var(--text-muted);font-size:12px;">${haceTexto}</div>
                 ${colaPendientes.length > 1 ? `<div style="margin-top:8px;color:var(--yellow);font-size:12px;">📬 ${colaPendientes.length - 1} más pendientes</div>` : ''}
             `;
@@ -1435,11 +1440,19 @@
                 const fechaTexto = fecha.toLocaleString('es-MX', { 
                     day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' 
                 });
+                const nombreGrupo = etiqueta(i.grupo);
+                const nombreNumero = i.numero ? etiqueta(i.numero) : 'desconocido';
+                const tieneAliasGrupo = nombreGrupo !== i.grupo;
+                const tieneAliasNumero = nombreNumero !== i.numero;
                 return `
                     <div class="historial-item">
                         <span class="zona">${escapeHtml(i.zona)}</span>
                         · 💰 <b>$${i.monto}</b>
-                        <br><span class="tiempo">${fechaTexto}</span>
+                        <br><span class="tiempo">
+                            📛 ${escapeHtml(nombreGrupo)}${tieneAliasGrupo ? '' : ' (sin alias)'}
+                            · 👤 ${escapeHtml(nombreNumero)}${tieneAliasNumero ? ` (…${i.numero.slice(-4)})` : ''}
+                            · ${fechaTexto}
+                        </span>
                     </div>
                 `;
             }).join('');
@@ -1924,7 +1937,7 @@
             }
         }
 
-        // ==================== HISTORIAL con refresco inteligente ====================
+        // ==================== HISTORIAL con alias ====================
         async function cargarHistorial() {
             try {
                 const r = await fetch('/api/historial');
@@ -1937,9 +1950,13 @@
                 for (const h of lista) {
                     if (h.id > ultimoHistorialId && !historialNotificado.has(h.id)) {
                         if (ultimoHistorialId > 0) {
-                            const numCorto = h.numero ? h.numero.slice(-4) : '????';
+                            const nombreNumero = h.numero ? etiqueta(h.numero) : 'desconocido';
+                            const nombreGrupo = etiqueta(h.grupo);
+                            const tieneAliasNum = nombreNumero !== h.numero;
+                            const numMostrar = tieneAliasNum ? nombreNumero : (h.numero ? '…' + h.numero.slice(-4) : '????');
+
                             toast(`✅ Bot respondió en ${h.zonaNombre}`);
-                            mostrarNotificacion('🤖 Bot respondió', `En ${h.zonaNombre} al número …${numCorto}`);
+                            mostrarNotificacion('🤖 Bot respondió', `En ${h.zonaNombre}\n👤 ${numMostrar}\n📛 ${nombreGrupo}`);
                             huboNuevaRespuesta = true;
                         }
                         historialNotificado.add(h.id);
@@ -1947,7 +1964,6 @@
                     }
                 }
 
-                // 🔽 Solo si hubo nueva respuesta, refrescar las zonas
                 if (huboNuevaRespuesta) {
                     await cargarConfig();
                 }
@@ -1965,12 +1981,19 @@
                 const haceTexto = hace < 60 ? `hace ${hace}s` :
                                   hace < 3600 ? `hace ${Math.floor(hace/60)}min` :
                                   `hace ${Math.floor(hace/3600)}h`;
-                const numCorto = h.numero ? h.numero.slice(-4) : '????';
+
+                const nombreGrupo = etiqueta(h.grupo);
+                const nombreNumero = h.numero ? etiqueta(h.numero) : 'desconocido';
+                const tieneAliasGrupo = nombreGrupo !== h.grupo;
+                const tieneAliasNumero = nombreNumero !== h.numero;
+
                 return `
                     <div class="historial-item">
                         <span class="zona">${escapeHtml(h.zonaNombre)}</span>
-                        · 👤 …${numCorto}
-                        <br><span class="tiempo">${haceTexto}</span>
+                        · 👤 <b>${escapeHtml(nombreNumero)}</b>
+                        ${tieneAliasNumero ? `<small style="opacity:0.6;">(${h.numero.slice(-4)})</small>` : ''}
+                        <br>
+                        <span class="tiempo">📛 ${escapeHtml(nombreGrupo)}${tieneAliasGrupo ? '' : ' <small style="opacity:0.5;">(sin alias)</small>'} · ${haceTexto}</span>
                     </div>
                 `;
             }).join('');
@@ -2109,7 +2132,6 @@
             }
         }
 
-        // 🔽 Intervals SIN refrescar zonas a lo bruto (no parpadea)
         setInterval(cargarStatus, 5000);
         setInterval(cargarCartera, 5000);
         setInterval(async () => {
@@ -2117,7 +2139,7 @@
             const hayModalAbierto = document.querySelector('.modal-overlay.active, .confirm-overlay.active');
             if (!haySelectAbierto && !hayModalAbierto) {
                 await cargarDetectados();
-                await cargarHistorial();  // este internamente llama cargarConfig solo si hay nueva respuesta
+                await cargarHistorial();
                 await cargarPendientes();
                 const badge = document.getElementById('pendientes-badge');
                 const count = document.getElementById('pendientes-count');
