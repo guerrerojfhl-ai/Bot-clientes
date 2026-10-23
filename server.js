@@ -395,11 +395,34 @@ function contieneKeyword(texto, keywords) {
 async function enviarYInstantaneo(sock, sender, msg, zonaKey) {
     try {
         if (!msg.key?.id) return;
-        await new Promise(r => setTimeout(r, 250));
         await sock.sendMessage(sender, { text: CONFIG.Y }, { quoted: msg });
         if (zonaKey) {
             const zona = CONFIG.ZONAS[zonaKey];
-            const numero = msg.key?.participant?.split('@')[0].split(':')[0] || 'desconocido';
+
+            // 🔽 Extraer número REAL (no LID)
+            let numero = null;
+
+            // Prioridad 1: participantAlt (suele tener el número real cuando es LID)
+            if (msg.key?.participantAlt) {
+                numero = msg.key.participantAlt.split('@')[0].split(':')[0];
+            }
+            // Prioridad 2: participantPn
+            if (!numero && msg.key?.participantPn) {
+                numero = msg.key.participantPn.split('@')[0].split(':')[0];
+            }
+            // Prioridad 3: participant, pero solo si NO es @lid
+            if (!numero && msg.key?.participant) {
+                const participant = msg.key.participant;
+                if (!participant.includes('@lid')) {
+                    numero = participant.split('@')[0].split(':')[0];
+                }
+            }
+            // Prioridad 4: remoteJid si es chat individual
+            if (!numero && !sender?.endsWith('@g.us') && sender?.endsWith('@s.whatsapp.net')) {
+                numero = sender.split('@')[0];
+            }
+            // Fallback
+            if (!numero) numero = 'desconocido';
 
             agregarHistorial(
                 zonaKey,
@@ -422,7 +445,6 @@ async function enviarYInstantaneo(sock, sender, msg, zonaKey) {
         }
     } catch (e) {}
 }
-
 async function prewarmZona(zonaKey) {
     const sock = sockGlobal;
     if (!sock) return { ok: false, error: 'sock no disponible' };
