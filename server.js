@@ -100,7 +100,7 @@ function agregarHistorial(zonaKey, zonaNombre, grupo, numero, texto) {
 
 // ==================== GRUPOS PREWARMENTADOS (CALENTADOS) ====================
 const prewarmsRecientes = new Map();
-const PREWARM_TTL_MS = 30 * 60 * 1000; // 30 minutos
+const PREWARM_TTL_MS = 30 * 60 * 1000;
 const BOT_INSTANCE_ID = Date.now();
 
 function yaFuePrewarmed(grupo) {
@@ -134,7 +134,6 @@ function limpiarTodosLosPrewarms() {
     }
 }
 
-// Limpiar prewarms expirados cada minuto
 setInterval(limpiarPrewarmsExpirados, 60 * 1000);
 
 // ==================== VARIABLES GLOBALES ====================
@@ -155,6 +154,7 @@ function crearEstructuraZona(nombre) {
     return {
         nombre: nombre,
         botActive: false,
+        orden: Date.now(),
         image_groups_extra: [], image_groups_removed: [],
         image_numbers_extra: [], image_numbers_removed: [],
         keyword_groups_extra: [], keyword_groups_removed: [],
@@ -194,6 +194,17 @@ function cargarDinamico() {
 
             if (Object.keys(d.zonas).length === 0) {
                 d.zonas = zonasPorDefecto();
+                fs.writeFileSync(CONFIG_PATH, JSON.stringify(d, null, 2));
+            }
+
+            let necesitaGuardar = false;
+            Object.keys(d.zonas).forEach((k, i) => {
+                if (typeof d.zonas[k].orden !== 'number') {
+                    d.zonas[k].orden = i + 1;
+                    necesitaGuardar = true;
+                }
+            });
+            if (necesitaGuardar) {
                 fs.writeFileSync(CONFIG_PATH, JSON.stringify(d, null, 2));
             }
 
@@ -321,7 +332,7 @@ function contieneKeyword(texto, keywords) {
 async function enviarYInstantaneo(sock, sender, msg, zonaKey) {
     try {
         if (!msg.key?.id) return;
-        await new Promise(r => setTimeout(r, 250));
+        await new Promise(r => setTimeout(r, 250));  // 🔽 CON delay (versión clientes)
         await sock.sendMessage(sender, { text: CONFIG.Y }, { quoted: msg });
         if (zonaKey) {
             const zona = CONFIG.ZONAS[zonaKey];
@@ -665,8 +676,14 @@ app.get('/api/config', (req, res) => {
     const d = cargarDinamico();
     limpiarPrewarmsExpirados();
 
+    const entradasOrdenadas = Object.entries(CONFIG.ZONAS).sort((a, b) => {
+        const oa = d.zonas[a[0]]?.orden || 0;
+        const ob = d.zonas[b[0]]?.orden || 0;
+        return oa - ob;
+    });
+
     const zonas = {};
-    for (const [k, v] of Object.entries(CONFIG.ZONAS)) {
+    for (const [k, v] of entradasOrdenadas) {
         const gruposZona = new Set([...v.IMAGE_GROUPS, ...v.KEYWORD_GROUPS]);
         let calentadosZona = 0;
         for (const g of gruposZona) {
@@ -683,6 +700,7 @@ app.get('/api/config', (req, res) => {
             keywords: v.KEYWORDS,
             totalGrupos: gruposZona.size,
             calentados: calentadosZona,
+            orden: d.zonas[k]?.orden || 0,
         };
     }
     res.json({ zonas, labels: d.labels });
@@ -724,7 +742,10 @@ app.post('/api/zona/crear', (req, res) => {
 
     const key = (slug || 'zona') + '_' + Date.now().toString(36).slice(-4);
 
+    const maxOrden = Math.max(0, ...Object.values(d.zonas).map(z => z.orden || 0));
+
     d.zonas[key] = crearEstructuraZona(nombre.trim());
+    d.zonas[key].orden = maxOrden + 1;
 
     guardarDinamico(d);
     aplicarCambios();
@@ -824,6 +845,43 @@ app.post('/api/zona/copiar', (req, res) => {
     guardarDinamico(d);
     aplicarCambios();
     res.json({ ok: true });
+});
+
+app.post('/api/zona/reordenar', (req, res) => {
+    const { zonaKey, direccion } = req.body;
+    if (!zonaKey || !['up', 'down'].includes(direccion)) {
+        return res.status(400).json({ error: 'Parámetros inválidos' });
+    }
+
+    const d = cargarDinamico();
+
+    const keys = Object.keys(d.zonas);
+    keys.forEach((k, i) => {
+        if (typeof d.zonas[k].orden !== 'number') d.zonas[k].orden = i + 1;
+    });
+
+    const ordenadas = keys.sort((a, b) => d.zonas[a].orden - d.zonas[b].orden);
+    const idx = ordenadas.indexOf(zonaKey);
+    if (idx === -1) return res.status(400).json({ error: 'Zona no encontrada' });
+
+    const vecinoIdx = direccion === 'up' ? idx - 1 : idx + 1;
+    if (vecinoIdx < 0 || vecinoIdx >= ordenadas.length) {
+        return res.json({ ok: true, cambiado: false });
+    }
+
+    const vecinaKey = ordenadas[vecinoIdx];
+
+    const tmp = d.zonas[zonaKey].orden;
+    d.zonas[zonaKey].orden = d.zonas[vecinaKey].orden;
+    d.zonas[vecinaKey].orden = tmp;
+
+    const entradas = Object.entries(d.zonas);
+    entradas.sort((a, b) => a[1].orden - b[1].orden);
+    entradas.forEach(([key, zona], i) => { zona.orden = i + 1; });
+
+    guardarDinamico(d);
+    aplicarCambios();
+    res.json({ ok: true, cambiado: true });
 });
 
 app.post('/api/prewarm', async (req, res) => {
