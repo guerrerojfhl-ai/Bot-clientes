@@ -450,10 +450,20 @@ async function enviarYInstantaneo(sock, sender, msg, zonaKey) {
                 numero
             );
 
-            const d = cargarDinamico();
-            d.zonas[zonaKey].botActive = false;
-            guardarDinamico(d);
-            aplicarCambios();
+                        const d = cargarDinamico();
+            let huboCambio = false;
+
+            // 🔽 Modo cacería: al responder una zona, apagar TODAS
+            for (const k of Object.keys(d.zonas)) {
+                if (d.zonas[k].botActive) {
+                    d.zonas[k].botActive = false;
+                    huboCambio = true;
+                }
+            }
+
+            if (huboCambio) {
+                guardarDinamico(d);
+                aplicarCambios();
         }
     } catch (e) {}
 }
