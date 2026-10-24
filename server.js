@@ -402,7 +402,6 @@ function contieneKeyword(texto, keywords) {
     return keywords.some(k => t.includes(String(k).toLowerCase().trim()));
 }
 
-// 🔽 Extrae el número REAL (no LID) del mensaje
 function extraerNumeroReal(msg, sender) {
     let numero = null;
 
@@ -426,11 +425,11 @@ function extraerNumeroReal(msg, sender) {
     return numero;
 }
 
-// ⏱️ CON DELAY — versión clientes
+// ⏱️ CON DELAY — versión clientes + modo cacería
 async function enviarYInstantaneo(sock, sender, msg, zonaKey) {
     try {
         if (!msg.key?.id) return;
-        await new Promise(r => setTimeout(r, 400));  // ⏱️ DELAY CLIENTES — NO BORRAR
+        await new Promise(r => setTimeout(r, 250));  // ⏱️ DELAY CLIENTES — NO BORRAR
         await sock.sendMessage(sender, { text: CONFIG.Y }, { quoted: msg });
         if (zonaKey) {
             const zona = CONFIG.ZONAS[zonaKey];
@@ -450,7 +449,7 @@ async function enviarYInstantaneo(sock, sender, msg, zonaKey) {
                 numero
             );
 
-                        const d = cargarDinamico();
+            const d = cargarDinamico();
             let huboCambio = false;
 
             // 🔽 Modo cacería: al responder una zona, apagar TODAS
@@ -464,6 +463,7 @@ async function enviarYInstantaneo(sock, sender, msg, zonaKey) {
             if (huboCambio) {
                 guardarDinamico(d);
                 aplicarCambios();
+            }
         }
     } catch (e) {}
 }
@@ -1067,6 +1067,12 @@ app.get('/api/cartera/historial', (req, res) => {
     res.json(c.historial.slice().reverse());
 });
 
+app.post('/api/cartera/pendientes/limpiar', (req, res) => {
+    const cantidad = pedidosPendientes.length;
+    pedidosPendientes.length = 0;
+    res.json({ ok: true, eliminados: cantidad });
+});
+
 // ==================== ESTADO DE CALENTAMIENTO ====================
 app.get('/api/prewarms', (req, res) => {
     limpiarPrewarmsExpirados();
@@ -1238,6 +1244,12 @@ app.get('/api/zonas-lista', (req, res) => {
 app.get('/api/historial', (req, res) => {
     const ordenado = [...historial].sort((a, b) => b.timestamp - a.timestamp);
     res.json(ordenado);
+});
+
+app.post('/api/historial/limpiar', (req, res) => {
+    const cantidad = historial.length;
+    historial.length = 0;
+    res.json({ ok: true, eliminados: cantidad });
 });
 
 // ==================== TELÉFONO ====================
