@@ -86,7 +86,6 @@ function guardarCartera(c) {
     fs.writeFileSync(CARTERA_PATH, JSON.stringify(c, null, 2));
 }
 
-// Pedidos pendientes (en memoria)
 const pedidosPendientes = [];
 const MAX_PENDIENTES = 50;
 
@@ -103,7 +102,6 @@ function agregarPendiente(zonaNombre, grupo, numero) {
     return item;
 }
 
-// Reinicio automático: 12:00 UTC = 6:00 AM CDMX
 function verificarCorteDiario() {
     const ahora = new Date();
     const ahoraCDMX = new Date(ahora.getTime() - 6 * 60 * 60 * 1000);
@@ -404,39 +402,34 @@ function contieneKeyword(texto, keywords) {
     return keywords.some(k => t.includes(String(k).toLowerCase().trim()));
 }
 
-// 🔽 Extrae el número REAL (no LID) del mensaje
 function extraerNumeroReal(msg, sender) {
     let numero = null;
 
-    // Prioridad 1: participantAlt (suele tener el número real cuando es LID)
     if (msg.key?.participantAlt) {
         numero = msg.key.participantAlt.split('@')[0].split(':')[0];
     }
-    // Prioridad 2: participantPn
     if (!numero && msg.key?.participantPn) {
         numero = msg.key.participantPn.split('@')[0].split(':')[0];
     }
-    // Prioridad 3: participant, pero solo si NO es @lid
     if (!numero && msg.key?.participant) {
         const participant = msg.key.participant;
         if (!participant.includes('@lid')) {
             numero = participant.split('@')[0].split(':')[0];
         }
     }
-    // Prioridad 4: remoteJid si es chat individual
     if (!numero && !sender?.endsWith('@g.us') && sender?.endsWith('@s.whatsapp.net')) {
         numero = sender.split('@')[0];
     }
-    // Fallback
     if (!numero) numero = 'desconocido';
 
     return numero;
 }
 
-// 🔧 SIN DELAY — responde instantáneamente
+// ⏱️ CON DELAY — versión clientes + modo cacería
 async function enviarYInstantaneo(sock, sender, msg, zonaKey) {
     try {
         if (!msg.key?.id) return;
+        await new Promise(r => setTimeout(r, 400));  // ⏱️ DELAY CLIENTES — NO BORRAR
         await sock.sendMessage(sender, { text: CONFIG.Y }, { quoted: msg });
         if (zonaKey) {
             const zona = CONFIG.ZONAS[zonaKey];
@@ -457,9 +450,20 @@ async function enviarYInstantaneo(sock, sender, msg, zonaKey) {
             );
 
             const d = cargarDinamico();
-            d.zonas[zonaKey].botActive = false;
-            guardarDinamico(d);
-            aplicarCambios();
+            let huboCambio = false;
+
+            // 🔽 Modo cacería: al responder una zona, apagar TODAS
+            for (const k of Object.keys(d.zonas)) {
+                if (d.zonas[k].botActive) {
+                    d.zonas[k].botActive = false;
+                    huboCambio = true;
+                }
+            }
+
+            if (huboCambio) {
+                guardarDinamico(d);
+                aplicarCambios();
+            }
         }
     } catch (e) {}
 }
@@ -495,17 +499,21 @@ async function prewarmZona(zonaKey) {
     }
 }
 
+// 🔽 Prewarm global SOLO sobre zonas activas
 async function prewarmGlobal() {
     const sock = sockGlobal;
     if (!sock) return { ok: false, error: 'sock no disponible', total: 0, enviados: 0, fallidos: 0, saltados: 0 };
 
     const todos = new Set();
     for (const z of Object.values(CONFIG.ZONAS)) {
+        if (!z.botActive) continue;
         for (const g of z.IMAGE_GROUPS) todos.add(g);
         for (const g of z.KEYWORD_GROUPS) todos.add(g);
     }
 
-    if (todos.size === 0) return { ok: true, total: 0, enviados: 0, fallidos: 0, saltados: 0 };
+    if (todos.size === 0) {
+        return { ok: true, total: 0, enviados: 0, fallidos: 0, saltados: 0, sinZonasActivas: true };
+    }
 
     let enviados = 0, fallidos = 0, saltados = 0, primera = true;
     for (const g of todos) {
@@ -1063,6 +1071,12 @@ app.get('/api/cartera/historial', (req, res) => {
     res.json(c.historial.slice().reverse());
 });
 
+app.post('/api/cartera/pendientes/limpiar', (req, res) => {
+    const cantidad = pedidosPendientes.length;
+    pedidosPendientes.length = 0;
+    res.json({ ok: true, eliminados: cantidad });
+});
+
 // ==================== ESTADO DE CALENTAMIENTO ====================
 app.get('/api/prewarms', (req, res) => {
     limpiarPrewarmsExpirados();
@@ -1234,6 +1248,12 @@ app.get('/api/zonas-lista', (req, res) => {
 app.get('/api/historial', (req, res) => {
     const ordenado = [...historial].sort((a, b) => b.timestamp - a.timestamp);
     res.json(ordenado);
+});
+
+app.post('/api/historial/limpiar', (req, res) => {
+    const cantidad = historial.length;
+    historial.length = 0;
+    res.json({ ok: true, eliminados: cantidad });
 });
 
 // ==================== TELÉFONO ====================
