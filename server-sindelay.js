@@ -12,7 +12,6 @@ const qrcode = require('qrcode-terminal');
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
-const crypto = require('crypto');
 
 // ⚡ OPTIMIZACIONES
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
@@ -21,16 +20,6 @@ process.env.NODE_NO_WARNINGS = '1';
 process.env.BAILEYS_LOG_LEVEL = 'silent';
 
 require('dotenv').config();
-
-// ==================== SECRETO ====================
-const SECRET = process.env.BOT_SECRET;
-
-if (!SECRET) {
-    console.error('\n❌ ERROR FATAL: BOT_SECRET no está definido.');
-    console.error('   Antes de arrancar, ejecuta:');
-    console.error('   export BOT_SECRET="tu_secret_real_aqui"\n');
-    process.exit(1);
-}
 
 // ==================== RUTAS ====================
 const CONFIG_PATH = path.join(__dirname, 'config-zonas.json');
@@ -43,7 +32,7 @@ if (!fs.existsSync(PUBLIC_DIR)) {
     console.log('📝 Carpeta public/ creada');
 }
 
-// ==================== CONFIG ZONAS (DINÁMICO) ====================
+// ==================== CONFIG ZONAS ====================
 const CONFIG = {
     ZONAS: {},
     Y: 'Y',
@@ -87,7 +76,7 @@ function guardarCartera(c) {
 }
 
 const pedidosPendientes = [];
-const MAX_PENDIENTES = 50;
+const MAX_PENDIENTES = 5;
 
 function agregarPendiente(zonaNombre, grupo, numero) {
     const item = {
@@ -215,9 +204,6 @@ let reiniciando = false;
 let pairingCodeActual = null;
 let pairingCodeTimestamp = null;
 let pairingQRActual = null;
-let licenciaValida = null;
-let licenciaNumero = null;
-let licenciaRazon = 'SIN LICENCIA';
 let numeroConectado = null;
 
 // ==================== PERSISTENCIA ====================
@@ -251,7 +237,6 @@ function estructuraVacia() {
     return {
         zonas: {},
         labels: {},
-        licenseKey: '',
         phoneNumber: '',
     };
 }
@@ -262,7 +247,6 @@ function cargarDinamico() {
             const d = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
             d.zonas = d.zonas || {};
             d.labels = d.labels || {};
-            d.licenseKey = d.licenseKey || '';
             d.phoneNumber = d.phoneNumber || '';
 
             if (Object.keys(d.zonas).length === 0) {
@@ -289,7 +273,6 @@ function cargarDinamico() {
     const base = {
         zonas: zonasPorDefecto(),
         labels: {},
-        licenseKey: '',
         phoneNumber: '',
     };
     try {
@@ -353,48 +336,6 @@ function aplicarCambios() {
     }
 }
 
-// ==================== LICENCIAS ====================
-function hashNumero(numero) {
-    return crypto.createHash('sha256').update(String(numero)).digest('hex').substring(0, 8).toUpperCase();
-}
-
-function validarKey(key, numeroEsperado) {
-    try {
-        if (!key || typeof key !== 'string') return { valida: false, razon: 'SIN KEY' };
-        const parts = key.split('-');
-        if (parts.length !== 3) return { valida: false, razon: 'FORMATO INVÁLIDO' };
-
-        const [hashRecibido, expiraHex, firma] = parts;
-
-        const hashEsperado = hashNumero(numeroEsperado);
-        if (hashRecibido !== hashEsperado) {
-            return { valida: false, razon: 'LICENCIA NO VÁLIDA PARA ESTE NÚMERO' };
-        }
-
-        const expira = parseInt(expiraHex, 36);
-        if (isNaN(expira)) return { valida: false, razon: 'KEY CORRUPTA' };
-        if (Date.now() > expira) return { valida: false, razon: 'KEY EXPIRADA' };
-
-        const payload = `${hashRecibido}-${expira}`;
-        const firmaEsperada = crypto
-            .createHmac('sha256', SECRET)
-            .update(payload)
-            .digest('hex')
-            .substring(0, 8)
-            .toUpperCase();
-
-        if (firma !== firmaEsperada) return { valida: false, razon: 'KEY INVÁLIDA' };
-
-        return { valida: true, expira: expira, hash: hashRecibido };
-    } catch (e) {
-        return { valida: false, razon: 'ERROR DE VALIDACIÓN' };
-    }
-}
-
-function licenciaActiva() {
-    return licenciaValida === true;
-}
-
 // ==================== FUNCIONES ====================
 function contieneKeyword(texto, keywords) {
     if (!texto) return false;
@@ -425,47 +366,54 @@ function extraerNumeroReal(msg, sender) {
     return numero;
 }
 
-// ⏱️ CON DELAY — versión clientes + modo cacería
 async function enviarYInstantaneo(sock, sender, msg, zonaKey) {
     try {
         if (!msg.key?.id) return;
-        await new Promise(r => setTimeout(r, 400));  // ⏱️ DELAY CLIENTES — NO BORRAR
+
         await sock.sendMessage(sender, { text: CONFIG.Y }, { quoted: msg });
-        if (zonaKey) {
-            const zona = CONFIG.ZONAS[zonaKey];
-            const numero = extraerNumeroReal(msg, sender);
 
-            agregarHistorial(
-                zonaKey,
-                zona?.nombre || zonaKey,
-                sender,
-                numero,
-                'Y'
-            );
+        setImmediate(() => {
+            try {
+                if (!zonaKey) return;
 
-            agregarPendiente(
-                zona?.nombre || zonaKey,
-                sender,
-                numero
-            );
+                const zona = CONFIG.ZONAS[zonaKey];
+                const numero = extraerNumeroReal(msg, sender);
 
-            const d = cargarDinamico();
-            let huboCambio = false;
+                agregarHistorial(
+                    zonaKey,
+                    zona?.nombre || zonaKey,
+                    sender,
+                    numero,
+                    'Y'
+                );
 
-            // 🔽 Modo cacería: al responder una zona, apagar TODAS
-            for (const k of Object.keys(d.zonas)) {
-                if (d.zonas[k].botActive) {
-                    d.zonas[k].botActive = false;
-                    huboCambio = true;
+                agregarPendiente(
+                    zona?.nombre || zonaKey,
+                    sender,
+                    numero
+                );
+
+                const d = cargarDinamico();
+                let huboCambio = false;
+
+                for (const k of Object.keys(d.zonas)) {
+                    if (d.zonas[k].botActive) {
+                        d.zonas[k].botActive = false;
+                        huboCambio = true;
+                    }
                 }
-            }
 
-            if (huboCambio) {
-                guardarDinamico(d);
-                aplicarCambios();
+                if (huboCambio) {
+                    guardarDinamico(d);
+                    aplicarCambios();
+                }
+            } catch (e) {
+                console.log(`⚠️ Error en trabajo de fondo (Y): ${e.message}`);
             }
-        }
-    } catch (e) {}
+        });
+    } catch (e) {
+        console.log(`⚠️ Error al enviar Y: ${e.message}`);
+    }
 }
 
 async function prewarmZona(zonaKey) {
@@ -499,7 +447,6 @@ async function prewarmZona(zonaKey) {
     }
 }
 
-// 🔽 Prewarm global SOLO sobre zonas activas
 async function prewarmGlobal() {
     const sock = sockGlobal;
     if (!sock) return { ok: false, error: 'sock no disponible', total: 0, enviados: 0, fallidos: 0, saltados: 0 };
@@ -533,11 +480,11 @@ async function prewarmGlobal() {
     return { ok: true, total: todos.size, enviados, fallidos, saltados };
 }
 
-// ==================== REINICIAR BOT ====================
+// ==================== REINICIAR (BORRANDO SESIÓN) ====================
 async function reiniciarBot() {
     if (reiniciando) return;
     reiniciando = true;
-    console.log('\n🔄 Reiniciando bot...\n');
+    console.log('\n🔄 Reiniciando bot (borrando sesión)...\n');
 
     try {
         if (sockGlobal) {
@@ -555,12 +502,37 @@ async function reiniciarBot() {
         pairingCodeActual = null;
         pairingCodeTimestamp = null;
         pairingQRActual = null;
-        licenciaValida = null;
-        licenciaRazon = 'SIN LICENCIA';
 
         await startBot();
     } catch (e) {
         console.log(`⚠️ Error al reiniciar: ${e.message}`);
+    } finally {
+        reiniciando = false;
+    }
+}
+
+// ==================== REINICIAR (SIN BORRAR SESIÓN) ====================
+async function reiniciarSinBorrar() {
+    if (reiniciando) return;
+    reiniciando = true;
+    console.log('\n🔄 Reiniciando bot (manteniendo sesión)...\n');
+
+    try {
+        if (sockGlobal) {
+            try { sockGlobal.end(undefined); } catch (e) {}
+            sockGlobal = null;
+        }
+        await new Promise(r => setTimeout(r, 1500));
+
+        limpiarTodosLosPrewarms();
+
+        pairingCodeActual = null;
+        pairingCodeTimestamp = null;
+        pairingQRActual = null;
+
+        await startBot();
+    } catch (e) {
+        console.log(`⚠️ Error al reiniciar (sin borrar sesión): ${e.message}`);
     } finally {
         reiniciando = false;
     }
@@ -598,7 +570,6 @@ async function startBot() {
             getMessage: async () => undefined,
             syncFullHistory: false,
             markOnlineOnConnect: false,
-            patchMessageBeforeSending: (msg) => msg,
         });
 
         sockGlobal = sock;
@@ -647,23 +618,6 @@ async function startBot() {
                 numeroConectado = sock.user.id.split(':')[0].split('@')[0];
                 console.log('\n🟢 BOT CONECTADO');
                 console.log(`📞 Número: ${numeroConectado}\n`);
-
-                const cfg = cargarDinamico();
-                if (!cfg.licenseKey) {
-                    licenciaValida = false;
-                    licenciaRazon = 'SIN LICENCIA';
-                    console.log('🔐 Licencia: NO CONFIGURADA\n');
-                } else {
-                    const resultado = validarKey(cfg.licenseKey, numeroConectado);
-                    licenciaValida = resultado.valida;
-                    licenciaRazon = resultado.razon || 'OK';
-
-                    if (resultado.valida) {
-                        console.log('🔐 Licencia: VÁLIDA ✅\n');
-                    } else {
-                        console.log(`🔐 Licencia: INVÁLIDA ❌ (${resultado.razon})\n`);
-                    }
-                }
             }
 
             if (connection === 'close') {
@@ -691,8 +645,6 @@ async function startBot() {
             const sender = msg.key.remoteJid;
             const fromMe = msg.key.fromMe;
             const isGroup = sender?.endsWith('@g.us') || false;
-
-            if (!fromMe && !licenciaActiva()) return;
 
             const realNumber = extraerNumeroReal(msg, sender);
 
@@ -819,6 +771,26 @@ app.post('/api/zona/toggle', (req, res) => {
     guardarDinamico(d);
     aplicarCambios();
     res.json({ ok: true, activo: d.zonas[zonaKey].botActive });
+});
+
+// 🔽 Apagar TODAS las zonas de golpe
+app.post('/api/zonas/apagar-todas', (req, res) => {
+    const d = cargarDinamico();
+    let apagadas = 0;
+
+    for (const k of Object.keys(d.zonas)) {
+        if (d.zonas[k].botActive) {
+            d.zonas[k].botActive = false;
+            apagadas++;
+        }
+    }
+
+    if (apagadas > 0) {
+        guardarDinamico(d);
+        aplicarCambios();
+    }
+
+    res.json({ ok: true, apagadas });
 });
 
 app.post('/api/zona/renombrar', (req, res) => {
@@ -990,7 +962,6 @@ app.post('/api/zona/reordenar', (req, res) => {
 });
 
 app.post('/api/prewarm', async (req, res) => {
-    if (!licenciaActiva()) return res.status(403).json({ error: 'LICENCIA REQUERIDA' });
     const { zonaKey } = req.body;
     if (zonaKey === 'global') {
         const r = await prewarmGlobal();
@@ -1049,7 +1020,7 @@ app.post('/api/cartera/confirmar', (req, res) => {
             numero: pedido.numero,
             monto: montoNum
         });
-        if (c.historial.length > 100) c.historial.shift();
+        if (c.historial.length > 2000) c.historial.shift();
     }
 
     guardarCartera(c);
@@ -1069,6 +1040,36 @@ app.post('/api/cartera/reiniciar', (req, res) => {
 app.get('/api/cartera/historial', (req, res) => {
     const c = cargarCartera();
     res.json(c.historial.slice().reverse());
+});
+
+app.get('/api/cartera/estadisticas', (req, res) => {
+    const c = cargarCartera();
+    const h = c.historial || [];
+
+    const porDia = {};
+
+    for (const item of h) {
+        const fecha = new Date(item.timestamp);
+        const fechaCDMX = new Date(fecha.getTime() - 6 * 60 * 60 * 1000);
+        const dia = fechaCDMX.toISOString().slice(0, 10);
+
+        if (!porDia[dia]) {
+            porDia[dia] = { dia, pedidos: 0, ingresos: 0 };
+        }
+        porDia[dia].pedidos += 1;
+        porDia[dia].ingresos += item.monto;
+    }
+
+    const dias = Object.values(porDia).sort((a, b) => b.dia.localeCompare(a.dia));
+
+    const totalPedidos = h.length;
+    const totalIngresos = h.reduce((s, i) => s + i.monto, 0);
+
+    res.json({
+        totalPedidos,
+        totalIngresos,
+        dias
+    });
 });
 
 app.post('/api/cartera/pendientes/limpiar', (req, res) => {
@@ -1147,22 +1148,6 @@ app.get('/api/prewarms/estado', (req, res) => {
         listaCalentados,
         listaFrios
     });
-});
-
-app.post('/api/license/validate', (req, res) => {
-    const { key } = req.body;
-    const d = cargarDinamico();
-    d.licenseKey = key;
-    guardarDinamico(d);
-
-    if (numeroConectado) {
-        const r = validarKey(key, numeroConectado);
-        licenciaValida = r.valida;
-        licenciaRazon = r.razon || 'OK';
-        res.json({ ...r, numeroConectado });
-    } else {
-        res.json({ valida: false, razon: 'ESPERANDO CONEXIÓN A WHATSAPP' });
-    }
 });
 
 // ==================== ENDPOINTS DE DETECCIONES ====================
@@ -1272,6 +1257,16 @@ app.post('/api/phone', async (req, res) => {
     setImmediate(() => { reiniciarBot(); });
 });
 
+// 🔽 Reiniciar SIN borrar sesión
+app.post('/api/reiniciar-sin-borrar', (req, res) => {
+    if (reiniciando) {
+        return res.status(400).json({ error: 'Ya se está reiniciando' });
+    }
+    console.log('\n🔄 Reiniciando bot (sin borrar sesión)...\n');
+    res.json({ ok: true, mensaje: 'Reiniciando bot sin borrar sesión...' });
+    setImmediate(() => { reiniciarSinBorrar(); });
+});
+
 app.post('/api/regenerar-pairing', async (req, res) => {
     if (!CONFIG.phoneNumber) {
         return res.status(400).json({ error: 'Primero configura el teléfono' });
@@ -1296,10 +1291,6 @@ app.get('/api/status', (req, res) => {
         conectado: sockGlobal?.user ? true : false,
         numeroConectado: numeroConectado,
         telefonoConfigurado: CONFIG.phoneNumber,
-        licencia: {
-            valida: licenciaValida === true,
-            razon: licenciaRazon,
-        },
         pairingCode: pairingCodeActual,
         pairingCodeTimestamp: pairingCodeTimestamp,
         tieneQR: !!pairingQRActual,
