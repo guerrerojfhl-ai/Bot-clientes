@@ -429,7 +429,7 @@ function extraerNumeroReal(msg, sender) {
 async function enviarYInstantaneo(sock, sender, msg, zonaKey) {
     try {
         if (!msg.key?.id) return;
-        await new Promise(r => setTimeout(r, 250));  // ⏱️ DELAY CLIENTES — NO BORRAR
+        await new Promise(r => setTimeout(r, 400));  // ⏱️ DELAY CLIENTES — NO BORRAR
         await sock.sendMessage(sender, { text: CONFIG.Y }, { quoted: msg });
         if (zonaKey) {
             const zona = CONFIG.ZONAS[zonaKey];
