@@ -817,6 +817,26 @@ app.post('/api/zona/toggle', (req, res) => {
     res.json({ ok: true, activo: d.zonas[zonaKey].botActive });
 });
 
+// 🔽 NUEVO: apagar TODAS las zonas de golpe
+app.post('/api/zonas/apagar-todas', (req, res) => {
+    const d = cargarDinamico();
+    let apagadas = 0;
+
+    for (const k of Object.keys(d.zonas)) {
+        if (d.zonas[k].botActive) {
+            d.zonas[k].botActive = false;
+            apagadas++;
+        }
+    }
+
+    if (apagadas > 0) {
+        guardarDinamico(d);
+        aplicarCambios();
+    }
+
+    res.json({ ok: true, apagadas });
+});
+
 app.post('/api/zona/renombrar', (req, res) => {
     const { zonaKey, nombre } = req.body;
     const d = cargarDinamico();
