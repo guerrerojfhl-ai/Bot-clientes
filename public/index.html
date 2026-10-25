@@ -923,7 +923,10 @@
         </div>
 
         <h2>🗺️ Zonas</h2>
-        <button class="secondary" onclick="nuevaZona()" style="margin-bottom:12px;">➕ Nueva Zona</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+            <button class="secondary" onclick="nuevaZona()" style="flex:1;min-width:140px;margin:0;">➕ Nueva Zona</button>
+            <button class="danger" onclick="apagarTodasLasZonas()" style="flex:1;min-width:140px;margin:0;">🛑 Apagar todas las zonas</button>
+        </div>
         <div id="zonas-container"></div>
     </div>
 
@@ -1230,7 +1233,6 @@
             document.getElementById('stat-activas').textContent = activas;
         }
 
-        // ==================== CARTERA ====================
         async function cargarCartera() {
             try {
                 const r = await fetch('/api/cartera');
@@ -1240,7 +1242,7 @@
             } catch (e) { console.error(e); }
         }
 
-                function renderCartera() {
+        function renderCartera() {
             const barOn = document.getElementById('cartera-bar');
             const barOff = document.getElementById('cartera-bar-off');
             const toggleOn = document.getElementById('cartera-toggle');
@@ -1248,7 +1250,6 @@
             const pedidos = document.getElementById('cartera-pedidos');
             const ingresos = document.getElementById('cartera-ingresos');
 
-            // 🔽 SIEMPRE actualizar los valores
             pedidos.textContent = carteraEstado.pedidosHoy || 0;
             ingresos.textContent = '$' + (carteraEstado.ingresosHoy || 0);
 
@@ -1474,7 +1475,6 @@
             }
         }
 
-        // ==================== CALENTAMIENTO ====================
         async function cargarEstadoCalentamiento() {
             try {
                 const r = await fetch('/api/prewarms/estado');
@@ -1709,6 +1709,32 @@
             }
         }
 
+        async function apagarTodasLasZonas() {
+            const activas = Object.values(zonas).filter(z => z.botActive).length;
+            if (activas === 0) {
+                toast('ℹ️ No hay zonas activas');
+                return;
+            }
+            if (!confirm(`¿Apagar TODAS las zonas activas?\n\nHay ${activas} zona${activas !== 1 ? 's' : ''} activa${activas !== 1 ? 's' : ''}.\n\nSe desactivarán todas de golpe.`)) return;
+
+            try {
+                const r = await fetch('/api/zonas/apagar-todas', { method: 'POST' });
+                const d = await r.json();
+                if (d.ok) {
+                    if (d.apagadas === 0) {
+                        toast('ℹ️ No había zonas activas');
+                    } else {
+                        toast(`🛑 ${d.apagadas} zona${d.apagadas !== 1 ? 's' : ''} apagada${d.apagadas !== 1 ? 's' : ''}`);
+                    }
+                    await cargarConfig();
+                } else {
+                    toast('❌ ' + (d.error || 'Error'), true);
+                }
+            } catch (e) {
+                toast('❌ Error de red', true);
+            }
+        }
+
         async function renombrar(zonaKey) {
             const nuevo = prompt('Nuevo nombre:', zonas[zonaKey].nombre);
             if (!nuevo || !nuevo.trim()) return;
@@ -1939,7 +1965,6 @@
             }
         }
 
-        // ==================== HISTORIAL con alias ====================
         async function cargarHistorial() {
             try {
                 const r = await fetch('/api/historial');
@@ -2133,7 +2158,7 @@
                 setTimeout(() => activarNotificaciones(true), 2000);
             }
         }
-                // 🔽 Sincronizar cuando la pestaña/app vuelve a estar visible
+
         document.addEventListener('visibilitychange', async () => {
             if (document.visibilityState === 'visible') {
                 console.log('👀 Panel visible de nuevo — sincronizando...');
@@ -2141,7 +2166,6 @@
                 await cargarStatus();
                 await cargarConfig();
                 await cargarPendientes();
-                // Actualizar badge de pendientes
                 const badge = document.getElementById('pendientes-badge');
                 const count = document.getElementById('pendientes-count');
                 if (colaPendientes.length > 0) {
@@ -2153,11 +2177,11 @@
             }
         });
 
-        // 🔽 También al recuperar el foco (cuando vuelve a la pestaña)
         window.addEventListener('focus', async () => {
             await cargarCartera();
             await cargarStatus();
         });
+
         setInterval(cargarStatus, 5000);
         setInterval(cargarCartera, 5000);
         setInterval(async () => {
