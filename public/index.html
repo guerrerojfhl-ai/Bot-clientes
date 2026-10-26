@@ -822,14 +822,7 @@
     </div>
 
     <div class="container">
-        <div class="card" id="aviso-calentamiento">
-            <h2>🔥 Estado de Calentamiento</h2>
-            <p class="info" id="aviso-texto">Cargando...</p>
-            <div class="barra-calentamiento">
-                <div class="barra-progreso" id="barra-progreso"></div>
-            </div>
-        </div>
-
+        <!-- 1. RESUMEN (compacto) -->
         <div class="card">
             <h2>📊 Resumen</h2>
             <div class="stats-grid">
@@ -852,6 +845,7 @@
             </div>
         </div>
 
+        <!-- 2. ESTADO DEL BOT -->
         <div class="card">
             <h2>📊 Estado del Bot</h2>
             <p style="margin-bottom: 8px;">Conexión: <span id="estado-conexion" class="status off">DESCONECTADO</span></p>
@@ -859,35 +853,25 @@
             <p class="info" id="licencia-info">Licencia: --</p>
         </div>
 
-        <div class="card pairing" id="pairing-card" style="display:none;">
-            <h2>🔑 Código de Vinculación</h2>
-            <p class="info">Copia el código y mételo en WhatsApp:</p>
-            <div class="pairing-code" id="pairing-code" onclick="copiarPairing()">----</div>
-            <p class="info" style="text-align:center;">👆 Toca para copiar</p>
-            <p class="info" style="text-align:center; color:var(--yellow);">⏱️ Expira en unos minutos</p>
+        <!-- 3. ZONAS (PRIMERO) -->
+        <h2>🗺️ Zonas</h2>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+            <button class="secondary" onclick="nuevaZona()" style="flex:1;min-width:140px;margin:0;">➕ Nueva Zona</button>
+            <button class="danger" onclick="apagarTodasLasZonas()" style="flex:1;min-width:140px;margin:0;">🛑 Apagar todas las zonas</button>
+        </div>
+        <div id="zonas-container"></div>
+
+        <div class="buscador-container">
+            <input id="buscar" placeholder="Buscar grupo, número o keyword...">
         </div>
 
-        <div class="card alert">
-            <h2>📞 Configurar Teléfono</h2>
-            <p class="info">Formato: código de país + número (solo dígitos)</p>
-            <p class="info">Ejemplo México: <b>5216691234567</b></p>
-            <input id="phoneInput" placeholder="Ej: 521XXXXXXXXXX" type="tel">
-            <button class="warning" onclick="guardarTelefono()">💾 Guardar y Reiniciar Bot</button>
-            <button class="secondary" onclick="regenerarPairing()" style="margin-top: 8px;">🔄 Generar Código Nuevo</button>
-        </div>
-
-        <div class="card">
-            <h2>🔑 Licencia</h2>
-            <input id="licenseKey" placeholder="XXXXXXXX-XXXXXXX-XXXXXXXX">
-            <button onclick="validarLicencia()">✅ Validar</button>
-            <p class="info" id="licencia-detalle">--</p>
-        </div>
-
+        <!-- 4. PREWARM GLOBAL -->
         <div class="card">
             <h2>🔥 Prewarm Global</h2>
             <button class="secondary" onclick="prewarm('global')">🔥 Enviar Prewarm a Todas las Zonas</button>
         </div>
 
+        <!-- 5. CALENTADOS Y FRÍOS (colapsable) -->
         <div class="card" id="card-grupos-calentamiento">
             <h2>🔥 Grupos Calentados y Fríos</h2>
             <p class="info">
@@ -895,19 +879,35 @@
                 Los "fríos" necesitan un prewarm para calentarse.
             </p>
 
-            <h4 style="margin-top: 16px;">🔥 Calentados (<span id="count-calentados">0</span>)</h4>
-            <div id="lista-calentados" style="margin-top: 8px; max-height: 400px; overflow-y: auto;">Cargando...</div>
+            <div class="card" id="aviso-calentamiento" style="margin-top:12px;padding:12px;">
+                <p class="info" id="aviso-texto" style="margin-top:0;">Cargando...</p>
+                <div class="barra-calentamiento">
+                    <div class="barra-progreso" id="barra-progreso"></div>
+                </div>
+            </div>
 
-            <h4 style="margin-top: 16px;">❄️ Fríos (<span id="count-frios">0</span>)</h4>
-            <div id="lista-frios" style="margin-top: 8px; max-height: 400px; overflow-y: auto;">Cargando...</div>
+            <button class="gray" onclick="toggleCalentamientoListas()" id="btn-toggle-calentamiento" style="margin-top: 12px; width: 100%;">
+                👁️ Ver listas (calentados y fríos)
+            </button>
+
+            <div id="contenedor-calentamiento" style="display: none; margin-top: 12px;">
+                <h4>🔥 Calentados (<span id="count-calentados">0</span>)</h4>
+                <div id="lista-calentados" style="margin-top: 8px; max-height: 400px; overflow-y: auto;">Cargando...</div>
+
+                <h4 style="margin-top: 16px;">❄️ Fríos (<span id="count-frios">0</span>)</h4>
+                <div id="lista-frios" style="margin-top: 8px; max-height: 400px; overflow-y: auto;">Cargando...</div>
+            </div>
         </div>
 
+        <!-- 6. ÚLTIMAS RESPUESTAS (con limpiar) -->
         <div class="card">
             <h2>📈 Últimas respuestas</h2>
             <p class="info">Cuando el bot responde "Y", aparece aquí.</p>
             <div id="historial" style="margin-top: 12px; max-height: 300px; overflow-y: auto;">Cargando...</div>
+            <button class="gray" onclick="limpiarHistorialRespuestas()" style="margin-top: 8px;">🗑️ Limpiar historial de Y</button>
         </div>
 
+        <!-- 7. GRUPOS DETECTADOS (con limpiar) -->
         <div class="card">
             <h2>🔍 Grupos Detectados</h2>
             <p class="info">
@@ -918,16 +918,30 @@
             <button class="gray" onclick="limpiarDetectados()" style="margin-top: 8px;">🗑️ Limpiar Lista</button>
         </div>
 
-        <div class="buscador-container">
-            <input id="buscar" placeholder="Buscar grupo, número o keyword...">
+        <!-- 8. CONFIGURAR TELÉFONO -->
+        <div class="card alert">
+            <h2>📞 Configurar Teléfono</h2>
+            <p class="info">Formato: código de país + número (solo dígitos)</p>
+            <p class="info">Ejemplo México: <b>5216691234567</b></p>
+            <input id="phoneInput" placeholder="Ej: 521XXXXXXXXXX" type="tel">
+            <button class="warning" onclick="guardarTelefono()">💾 Guardar y Reiniciar Bot (borra sesión)</button>
+            <button class="secondary" onclick="regenerarPairing()" style="margin-top: 8px;">🔄 Generar Código Nuevo</button>
         </div>
 
-        <h2>🗺️ Zonas</h2>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
-            <button class="secondary" onclick="nuevaZona()" style="flex:1;min-width:140px;margin:0;">➕ Nueva Zona</button>
-            <button class="danger" onclick="apagarTodasLasZonas()" style="flex:1;min-width:140px;margin:0;">🛑 Apagar todas las zonas</button>
+        <!-- 9. REINICIAR SIN BORRAR SESIÓN -->
+        <div class="card">
+            <h2>🔄 Reiniciar Bot (sin borrar sesión)</h2>
+            <p class="info">Úsalo si notas lentitud. Mantiene la sesión de WhatsApp. Si después de esto sigue lento, usa "Guardar y Reiniciar Bot" para renovar sesión.</p>
+            <button class="secondary" onclick="reiniciarSinBorrar()">🔄 Reiniciar (mantener sesión)</button>
         </div>
-        <div id="zonas-container"></div>
+
+        <!-- 10. LICENCIA -->
+        <div class="card">
+            <h2>🔑 Licencia</h2>
+            <input id="licenseKey" placeholder="XXXXXXXX-XXXXXXX-XXXXXXXX">
+            <button onclick="validarLicencia()">✅ Validar</button>
+            <p class="info" id="licencia-detalle">--</p>
+        </div>
     </div>
 
     <button class="pendientes-badge" id="pendientes-badge" onclick="abrirColaPendientes()">
@@ -967,7 +981,7 @@
                 <button data-filtro="todo" onclick="filtrarHistorial('todo')">Todo</button>
             </div>
             <div id="historial-cartera-lista" style="max-height: 400px; overflow-y: auto;">Cargando...</div>
-            <div class="modal-actions">
+            <div class="modal-actions" style="flex-wrap: wrap;">
                 <button class="gray" onclick="cerrarHistorialCartera()">Cerrar</button>
                 <button class="danger" onclick="reiniciarCartera()">🔄 Reiniciar contadores</button>
             </div>
@@ -1010,7 +1024,6 @@
         const MAX_FALLOS_ANTES_DE_AVISO = 3;
         let avisoBotActivo = false;
 
-        // ==================== CARTERA ====================
         let carteraEstado = { activa: false, pedidosHoy: 0, ingresosHoy: 0, pendientes: 0 };
         let colaPendientes = [];
         let pedidoActual = null;
@@ -1475,6 +1488,29 @@
             }
         }
 
+        async function limpiarHistorialRespuestas() {
+            if (!confirm('¿Limpiar el historial de respuestas "Y" del bot?\n\nEsto no afecta a la cartera.')) return;
+            try {
+                const r = await fetch('/api/historial/limpiar', { method: 'POST' });
+                const d = await r.json();
+                if (d.ok) {
+                    toast(`🧹 ${d.eliminados} respuestas eliminadas`);
+                    await cargarHistorial();
+                }
+            } catch (e) {
+                toast('❌ Error', true);
+            }
+        }
+
+        function toggleCalentamientoListas() {
+            const cont = document.getElementById('contenedor-calentamiento');
+            const btn = document.getElementById('btn-toggle-calentamiento');
+            if (!cont || !btn) return;
+            const visible = cont.style.display !== 'none';
+            cont.style.display = visible ? 'none' : 'block';
+            btn.textContent = visible ? '👁️ Ver listas (calentados y fríos)' : '👁️ Ocultar listas';
+        }
+
         async function cargarEstadoCalentamiento() {
             try {
                 const r = await fetch('/api/prewarms/estado');
@@ -1907,8 +1943,8 @@
         async function guardarTelefono() {
             const tel = document.getElementById('phoneInput').value;
             if (!tel) return;
-            if (!confirm('⚠️ Esto reiniciará el bot. ¿Continuar?')) return;
-            toast('🔄 Reiniciando bot...');
+            if (!confirm('⚠️ Esto reiniciará el bot y BORRARÁ la sesión. ¿Continuar?')) return;
+            toast('🔄 Reiniciando bot (borrando sesión)...');
             const r = await fetch('/api/phone', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -1922,6 +1958,28 @@
                     intentos++;
                     if (intentos >= 20) clearInterval(interval);
                 }, 2000);
+            }
+        }
+
+        async function reiniciarSinBorrar() {
+            if (!confirm('¿Reiniciar el bot SIN borrar la sesión de WhatsApp?\n\nÚtil si notas lentitud. La sesión se mantiene.')) return;
+            toast('🔄 Reiniciando (manteniendo sesión)...');
+            try {
+                const r = await fetch('/api/reiniciar-sin-borrar', { method: 'POST' });
+                const d = await r.json();
+                if (d.ok) {
+                    toast('✅ Reiniciando... espera 10-15 segundos');
+                    let intentos = 0;
+                    const interval = setInterval(async () => {
+                        await cargarStatus();
+                        intentos++;
+                        if (intentos >= 15) clearInterval(interval);
+                    }, 2000);
+                } else {
+                    toast('❌ ' + (d.error || 'Error'), true);
+                }
+            } catch (e) {
+                toast('❌ Error de red', true);
             }
         }
 
