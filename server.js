@@ -728,10 +728,6 @@ async function startBot() {
             if (!msg?.message) return;
             if (msg.key.remoteJid === 'status@broadcast') return;
 
-            // ✅ Fix #4: marcar como leído
-            if (!msg.key.fromMe) {
-                try { await sock.readMessages([msg.key]); } catch (e) {}
-            }
 
             const sender = msg.key.remoteJid;
             const fromMe = msg.key.fromMe;
