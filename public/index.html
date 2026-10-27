@@ -267,6 +267,8 @@
         button.warning:hover { background: #d97706; }
         button.gray { background: var(--bg-hover); color: var(--text-primary); border: 1px solid var(--border); }
         button.gray:hover { background: var(--border); }
+        button.purple { background: var(--purple); }
+        button.purple:hover { background: #7c3aed; }
         button.small {
             padding: 8px 12px;
             font-size: 12px;
@@ -373,6 +375,7 @@
         }
         .lista-item button.edit { background: var(--blue); }
         .lista-item button.copy { background: var(--purple); }
+        .lista-item button.paint { background: var(--purple); }
 
         .lista-item.keyword-item {
             background: rgba(16, 185, 129, 0.12);
@@ -475,6 +478,7 @@
         .badge.ok { background: var(--accent); color: #000; }
         .badge.info { background: var(--blue); color: #fff; }
         .badge.warn { background: var(--yellow); color: #000; }
+        .badge.purple { background: var(--purple); color: #fff; }
 
         .vacio {
             text-align: center;
@@ -761,6 +765,32 @@
             border-color: var(--accent);
         }
 
+        .preset-btn {
+            width: auto;
+            padding: 8px 14px;
+            font-size: 12px;
+            margin: 4px 4px 4px 0;
+            border-radius: 8px;
+            display: inline-flex;
+            background: var(--bg-hover);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        .preset-btn:hover { background: var(--border); transform: none; box-shadow: none; }
+
+        .preview-respuesta {
+            background: var(--bg-input);
+            border: 2px dashed var(--accent);
+            border-radius: 10px;
+            padding: 16px;
+            text-align: center;
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--accent);
+            margin-top: 12px;
+        }
+
         @media (max-width: 480px) {
             .header-title { font-size: 14px; }
             .header-logo { font-size: 24px; }
@@ -821,15 +851,15 @@
             <div class="stats-grid">
                 <div class="stat-box">
                     <div class="num" id="stat-grupos">0</div>
-                    <div class="label">Grupos</div>
+                    <div class="label">Grupos únicos</div>
                 </div>
                 <div class="stat-box">
                     <div class="num" id="stat-numeros">0</div>
-                    <div class="label">Números</div>
+                    <div class="label">Locales únicos</div>
                 </div>
                 <div class="stat-box">
                     <div class="num" id="stat-keywords">0</div>
-                    <div class="label">Keywords</div>
+                    <div class="label">Keywords únicas</div>
                 </div>
                 <div class="stat-box">
                     <div class="num" id="stat-activas">0</div>
@@ -867,13 +897,47 @@
             <input id="buscar" placeholder="Buscar grupo, número o keyword...">
         </div>
 
-        <!-- 4. PREWARM GLOBAL -->
+        <!-- 4. CONFIGURACIÓN GLOBAL DE RESPUESTA -->
+        <div class="card">
+            <h2>🎨 Configuración Global de Respuesta</h2>
+            <p class="info">Respuesta por defecto cuando un grupo NO tiene config propia. Los grupos sin config usan esta.</p>
+            <label style="display:block;font-size:12px;color:var(--text-secondary);margin-top:14px;font-weight:600;text-transform:uppercase;letter-spacing:0.3px;">Texto de respuesta</label>
+            <input id="respuestaGlobalTexto" placeholder="Ej: Y, Ñ, Ok, Listo" maxlength="30">
+            <label style="display:flex;align-items:center;gap:8px;margin-top:12px;cursor:pointer;">
+                <input type="checkbox" id="respuestaGlobalCitado" style="width:auto;margin:0;">
+                <span style="font-size:14px;font-weight:600;">Enviar como respuesta citada (reply)</span>
+            </label>
+            <div class="preview-respuesta" id="previewRespuestaGlobal">Y</div>
+            <button class="secondary" onclick="guardarRespuestaGlobal()" style="margin-top:12px;">💾 Guardar respuesta global</button>
+        </div>
+
+        <!-- 5. LOCALES AGREGADOS -->
+        <div class="card">
+            <h2>🏪 Locales agregados</h2>
+            <p class="info" id="countLocales">Cargando...</p>
+            <div class="buscador-container" style="margin-top:12px;">
+                <input id="buscarLocal" placeholder="Buscar local por número...">
+            </div>
+            <div id="locales-lista" style="margin-top:12px;max-height:500px;overflow-y:auto;">Cargando...</div>
+        </div>
+
+        <!-- 6. GRUPOS AGREGADOS -->
+        <div class="card">
+            <h2>👥 Grupos agregados</h2>
+            <p class="info" id="countGrupos">Cargando...</p>
+            <div class="buscador-container" style="margin-top:12px;">
+                <input id="buscarGrupo" placeholder="Buscar grupo por nombre o JID...">
+            </div>
+            <div id="grupos-lista" style="margin-top:12px;max-height:500px;overflow-y:auto;">Cargando...</div>
+        </div>
+
+        <!-- 7. PREWARM GLOBAL -->
         <div class="card">
             <h2>🔥 Prewarm Global</h2>
             <button class="secondary" onclick="prewarm('global')">🔥 Enviar Prewarm a Todas las Zonas</button>
         </div>
 
-        <!-- 5. CALENTADOS Y FRÍOS -->
+        <!-- 8. CALENTADOS Y FRÍOS -->
         <div class="card" id="card-grupos-calentamiento">
             <h2>🔥 Grupos Calentados y Fríos</h2>
             <p class="info">
@@ -901,15 +965,15 @@
             </div>
         </div>
 
-        <!-- 6. ÚLTIMAS RESPUESTAS -->
+        <!-- 9. ÚLTIMAS RESPUESTAS -->
         <div class="card">
             <h2>📈 Últimas respuestas</h2>
-            <p class="info">Cuando el bot responde "Y", aparece aquí.</p>
+            <p class="info">Cuando el bot responde, aparece aquí.</p>
             <div id="historial" style="margin-top: 12px; max-height: 300px; overflow-y: auto;">Cargando...</div>
-            <button class="gray" onclick="limpiarHistorialRespuestas()" style="margin-top: 8px;">🗑️ Limpiar historial de Y</button>
+            <button class="gray" onclick="limpiarHistorialRespuestas()" style="margin-top: 8px;">🗑️ Limpiar historial</button>
         </div>
 
-        <!-- 7. GRUPOS DETECTADOS -->
+        <!-- 10. GRUPOS DETECTADOS -->
         <div class="card">
             <h2>🔍 Grupos Detectados</h2>
             <p class="info">
@@ -920,7 +984,7 @@
             <button class="gray" onclick="limpiarDetectados()" style="margin-top: 8px;">🗑️ Limpiar Lista</button>
         </div>
 
-        <!-- 8. CONFIGURAR TELÉFONO -->
+        <!-- 11. CONFIGURAR TELÉFONO -->
         <div class="card alert">
             <h2>📞 Configurar Teléfono</h2>
             <p class="info">Formato: código de país + número (solo dígitos)</p>
@@ -930,14 +994,14 @@
             <button class="secondary" onclick="regenerarPairing()" style="margin-top: 8px;">🔄 Generar Código Nuevo</button>
         </div>
 
-        <!-- 9. REINICIAR SIN BORRAR SESIÓN -->
+        <!-- 12. REINICIAR SIN BORRAR SESIÓN -->
         <div class="card">
             <h2>🔄 Reiniciar Bot (sin borrar sesión)</h2>
             <p class="info">Úsalo si notas lentitud. Mantiene la sesión de WhatsApp. Si después de esto sigue lento, usa "Guardar y Reiniciar Bot" para renovar sesión.</p>
             <button class="secondary" onclick="reiniciarSinBorrar()">🔄 Reiniciar (mantener sesión)</button>
         </div>
 
-        <!-- 10. LICENCIA -->
+        <!-- 13. LICENCIA -->
         <div class="card">
             <h2>🔑 Licencia</h2>
             <input id="licenseKey" placeholder="XXXXXXXX-XXXXXXX-XXXXXXXX">
@@ -973,6 +1037,39 @@
         </div>
     </div>
 
+    <div class="modal-overlay" id="modal-respuesta-grupo">
+        <div class="modal">
+            <h3>🎨 Personalizar respuesta</h3>
+            <p class="info" id="respuesta-grupo-info" style="word-break:break-all;"></p>
+
+            <label>Presets rápidos:</label>
+            <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px;">
+                <button class="preset-btn" onclick="aplicarPreset('Y', false)">Y suelta</button>
+                <button class="preset-btn" onclick="aplicarPreset('Y', true)">Y citada</button>
+                <button class="preset-btn" onclick="aplicarPreset('Ñ', false)">Ñ suelta</button>
+                <button class="preset-btn" onclick="aplicarPreset('Ñ', true)">Ñ citada</button>
+                <button class="preset-btn" onclick="aplicarPreset('Ok', false)">Ok suelta</button>
+                <button class="preset-btn" onclick="aplicarPreset('Ok', true)">Ok citada</button>
+            </div>
+
+            <label>Texto de respuesta:</label>
+            <input id="respuesta-grupo-texto" placeholder="Ej: Y, Ñ, Ok" maxlength="30">
+
+            <label style="display:flex;align-items:center;gap:8px;margin-top:12px;cursor:pointer;">
+                <input type="checkbox" id="respuesta-grupo-citado" style="width:auto;margin:0;">
+                <span style="font-size:14px;font-weight:600;">Enviar como respuesta citada (reply)</span>
+            </label>
+
+            <div class="preview-respuesta" id="previewRespuestaGrupo">Y</div>
+
+            <div class="modal-actions">
+                <button class="gray" onclick="cerrarModalRespuesta()">Cancelar</button>
+                <button class="danger" onclick="quitarConfigGrupo()">🗑️ Quitar config</button>
+                <button onclick="guardarRespuestaGrupo()">💾 Guardar</button>
+            </div>
+        </div>
+    </div>
+
     <div class="modal-overlay" id="modal-historial-cartera">
         <div class="modal">
             <h3>📋 Historial de la Cartera</h3>
@@ -992,7 +1089,7 @@
 
     <div class="confirm-overlay" id="confirm-pedido">
         <div class="confirm-box">
-            <h3>🤖 El bot respondió "Y"</h3>
+            <h3>🤖 El bot respondió</h3>
             <div class="detalles" id="confirm-detalles">Cargando...</div>
             <p style="font-size:14px;font-weight:600;margin-bottom:10px;">¿Ganaste el pedido?</p>
             <div class="botones">
@@ -1014,6 +1111,9 @@
         let labels = {};
         let zonaSeleccionadaPorDetectado = {};
         let modalCopiarValor = null;
+        let grupoRespuestaActual = null;
+        let respuestasPorGrupo = {};
+        let respuestaGlobal = { texto: 'Y', citado: true };
 
         let zonasAbiertas = JSON.parse(localStorage.getItem('zonasAbiertas') || '{}');
 
@@ -1029,6 +1129,8 @@
         let pedidoActual = null;
         let historialCarteraCompleto = [];
         let filtroHistorialActual = 'hoy';
+        let localesUnicosCache = [];
+        let gruposUnicosCache = [];
 
         function toggleTema() {
             document.body.classList.toggle('light');
@@ -1106,6 +1208,7 @@
             await cargarEstadoCalentamiento();
             await cargarCartera();
             await cargarPendientes();
+            await cargarLocalesYGrupos();
         }
 
         async function cargarStatus() {
@@ -1119,6 +1222,7 @@
                 el.textContent = d.conectado ? '● CONECTADO' : '● DESCONECTADO';
                 el.className = 'status ' + (d.conectado ? 'on' : 'off');
                 document.getElementById('numero-info').textContent = 'Número: ' + (d.numeroConectado || '--');
+
                 const li = d.licencia;
                 const licInfo = document.getElementById('licencia-info');
                 if (li && li.valida) {
@@ -1131,7 +1235,7 @@
                 document.getElementById('licencia-detalle').textContent =
                     li?.valida ? `Autorizada para: ${d.numeroConectado}` : (li?.razon || '--');
 
-                // 🔑 Mostrar/ocultar código de emparejamiento
+                // 🔑 Pairing card
                 const pairingCard = document.getElementById('pairing-card');
                 const pairingCodeEl = document.getElementById('pairing-code');
                 const pairingInfoEl = document.getElementById('pairing-info');
@@ -1193,24 +1297,221 @@
                 const d = await r.json();
                 zonas = d.zonas;
                 labels = d.labels || {};
+                respuestasPorGrupo = d.respuestasPorGrupo || {};
+                respuestaGlobal = d.respuestaGlobal || { texto: 'Y', citado: true };
+
+                document.getElementById('respuestaGlobalTexto').value = respuestaGlobal.texto || 'Y';
+                document.getElementById('respuestaGlobalCitado').checked = respuestaGlobal.citado !== false;
+                actualizarPreviewGlobal();
+
                 renderZonas();
-                actualizarStats();
+                actualizarStats(d.unicos);
                 cargarEstadoCalentamiento();
+                renderGrupos();
             } catch (e) { console.error(e); }
         }
 
-        function actualizarStats() {
-            let grupos = 0, numeros = 0, keywords = 0, activas = 0;
-            for (const z of Object.values(zonas)) {
-                grupos += z.imageGroups.length + z.keywordGroups.length;
-                numeros += z.imageNumbers.length + z.keywordNumbers.length;
-                keywords += z.keywords.length;
-                if (z.botActive) activas++;
+        function actualizarPreviewGlobal() {
+            const texto = document.getElementById('respuestaGlobalTexto').value || 'Y';
+            const citado = document.getElementById('respuestaGlobalCitado').checked;
+            document.getElementById('previewRespuestaGlobal').textContent = citado ? `"${texto}" (citando mensaje)` : `"${texto}" (suelta)`;
+        }
+
+        document.getElementById('respuestaGlobalTexto').addEventListener('input', actualizarPreviewGlobal);
+        document.getElementById('respuestaGlobalCitado').addEventListener('change', actualizarPreviewGlobal);
+
+        async function guardarRespuestaGlobal() {
+            const texto = document.getElementById('respuestaGlobalTexto').value.trim();
+            const citado = document.getElementById('respuestaGlobalCitado').checked;
+            if (!texto) { toast('❌ Texto vacío', true); return; }
+            try {
+                const r = await fetch('/api/respuesta-global', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ texto, citado })
+                });
+                const d = await r.json();
+                if (d.ok) {
+                    toast('✅ Configuración global guardada');
+                    respuestaGlobal = d.respuestaGlobal;
+                } else {
+                    toast('❌ ' + (d.error || 'Error'), true);
+                }
+            } catch (e) { toast('❌ Error de red', true); }
+        }
+
+        function actualizarStats(unicos) {
+            if (unicos) {
+                document.getElementById('stat-grupos').textContent = unicos.gruposUnicos || 0;
+                document.getElementById('stat-numeros').textContent = unicos.localesUnicos || 0;
+                document.getElementById('stat-keywords').textContent = unicos.keywordsUnicas || 0;
             }
-            document.getElementById('stat-grupos').textContent = grupos;
-            document.getElementById('stat-numeros').textContent = numeros;
-            document.getElementById('stat-keywords').textContent = keywords;
+            let activas = 0;
+            for (const z of Object.values(zonas)) if (z.botActive) activas++;
             document.getElementById('stat-activas').textContent = activas;
+        }
+
+        async function cargarLocalesYGrupos() {
+            try {
+                const [rLocales, rGrupos] = await Promise.all([
+                    fetch('/api/locales-unicos'),
+                    fetch('/api/grupos-unicos')
+                ]);
+                localesUnicosCache = await rLocales.json();
+                gruposUnicosCache = await rGrupos.json();
+                renderLocales();
+                renderGrupos();
+            } catch (e) { console.error(e); }
+        }
+
+        function renderLocales() {
+            const cont = document.getElementById('locales-lista');
+            if (!cont) return;
+            const q = (document.getElementById('buscarLocal').value || '').toLowerCase().trim();
+            const lista = q
+                ? localesUnicosCache.filter(l => l.numero.includes(q) || etiqueta(l.numero).toLowerCase().includes(q))
+                : localesUnicosCache;
+
+            document.getElementById('countLocales').textContent = `${localesUnicosCache.length} locales únicos agregados`;
+
+            if (lista.length === 0) {
+                cont.innerHTML = '<p class="vacio">No hay locales que coincidan.</p>';
+                return;
+            }
+
+            cont.innerHTML = lista.map(l => {
+                const alias = etiqueta(l.numero);
+                const tieneAlias = alias !== l.numero;
+                const tipos = l.tipo.map(t => t === 'imagen' ? '<span class="badge info">📷 Imagen</span>' : '<span class="badge purple">🔤 Keyword</span>').join(' ');
+                return `
+                    <div class="lista-item">
+                        <div class="item-info">
+                            ${tieneAlias ? `<b>${escapeHtml(alias)}</b>` : ''}
+                            <small>${escapeHtml(l.numero)}</small>
+                            <small style="margin-top:4px;">📍 ${l.zonas.map(z => escapeHtml(z)).join(', ')}</small>
+                            <small style="margin-top:4px;">${tipos}</small>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderGrupos() {
+            const cont = document.getElementById('grupos-lista');
+            if (!cont) return;
+            const q = (document.getElementById('buscarGrupo').value || '').toLowerCase().trim();
+            const lista = q
+                ? gruposUnicosCache.filter(g => g.jid.toLowerCase().includes(q) || etiqueta(g.jid).toLowerCase().includes(q))
+                : gruposUnicosCache;
+
+            document.getElementById('countGrupos').textContent = `${gruposUnicosCache.length} grupos únicos agregados`;
+
+            if (lista.length === 0) {
+                cont.innerHTML = '<p class="vacio">No hay grupos que coincidan.</p>';
+                return;
+            }
+
+            cont.innerHTML = lista.map(g => {
+                const alias = etiqueta(g.jid);
+                const tieneAlias = alias !== g.jid;
+                const config = respuestasPorGrupo[g.jid];
+                const badgeConfig = config ? `<span class="badge purple">🎨 "${escapeHtml(config.texto)}" ${config.citado ? 'citada' : 'suelta'}</span>` : '';
+                const badgeCalentado = g.calentado ? `<span class="badge ok">🔥 ${Math.floor(g.expiraEn/60)}m</span>` : '<span class="badge warn">❄️ Frío</span>';
+                const tipos = g.tipo.map(t => t === 'imagen' ? '<span class="badge info">📷</span>' : '<span class="badge purple">🔤</span>').join(' ');
+                return `
+                    <div class="lista-item">
+                        <div class="item-info">
+                            ${tieneAlias ? `<b>${escapeHtml(alias)}</b>` : ''}
+                            <small>${escapeHtml(g.jid)}</small>
+                            <small style="margin-top:4px;">📍 ${g.zonas.map(z => escapeHtml(z)).join(', ')}</small>
+                            <small style="margin-top:4px;">${tipos} ${badgeCalentado} ${badgeConfig}</small>
+                        </div>
+                        <button class="paint" onclick="abrirModalRespuesta('${escapeHtml(g.jid)}')" title="Personalizar respuesta">🎨</button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        document.getElementById('buscarLocal').addEventListener('input', renderLocales);
+        document.getElementById('buscarGrupo').addEventListener('input', renderGrupos);
+
+        function abrirModalRespuesta(jid) {
+            grupoRespuestaActual = jid;
+            const alias = etiqueta(jid);
+            document.getElementById('respuesta-grupo-info').textContent = alias !== jid ? `${alias} (${jid})` : jid;
+
+            const config = respuestasPorGrupo[jid];
+            if (config) {
+                document.getElementById('respuesta-grupo-texto').value = config.texto || 'Y';
+                document.getElementById('respuesta-grupo-citado').checked = config.citado !== false;
+            } else {
+                document.getElementById('respuesta-grupo-texto').value = respuestaGlobal.texto || 'Y';
+                document.getElementById('respuesta-grupo-citado').checked = respuestaGlobal.citado !== false;
+            }
+            actualizarPreviewGrupo();
+            document.getElementById('modal-respuesta-grupo').classList.add('active');
+        }
+
+        function cerrarModalRespuesta() {
+            document.getElementById('modal-respuesta-grupo').classList.remove('active');
+            grupoRespuestaActual = null;
+        }
+
+        function aplicarPreset(texto, citado) {
+            document.getElementById('respuesta-grupo-texto').value = texto;
+            document.getElementById('respuesta-grupo-citado').checked = citado;
+            actualizarPreviewGrupo();
+        }
+
+        function actualizarPreviewGrupo() {
+            const texto = document.getElementById('respuesta-grupo-texto').value || 'Y';
+            const citado = document.getElementById('respuesta-grupo-citado').checked;
+            document.getElementById('previewRespuestaGrupo').textContent = citado ? `"${texto}" (citando mensaje)` : `"${texto}" (suelta)`;
+        }
+
+        document.getElementById('respuesta-grupo-texto').addEventListener('input', actualizarPreviewGrupo);
+        document.getElementById('respuesta-grupo-citado').addEventListener('change', actualizarPreviewGrupo);
+
+        async function guardarRespuestaGrupo() {
+            if (!grupoRespuestaActual) return;
+            const texto = document.getElementById('respuesta-grupo-texto').value.trim();
+            const citado = document.getElementById('respuesta-grupo-citado').checked;
+            if (!texto) { toast('❌ Texto vacío', true); return; }
+            try {
+                const r = await fetch('/api/grupo/respuesta', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ jid: grupoRespuestaActual, texto, citado })
+                });
+                const d = await r.json();
+                if (d.ok) {
+                    toast('✅ Respuesta guardada');
+                    respuestasPorGrupo[grupoRespuestaActual] = d.respuesta;
+                    cerrarModalRespuesta();
+                    renderGrupos();
+                } else {
+                    toast('❌ ' + (d.error || 'Error'), true);
+                }
+            } catch (e) { toast('❌ Error de red', true); }
+        }
+
+        async function quitarConfigGrupo() {
+            if (!grupoRespuestaActual) return;
+            if (!confirm('¿Quitar la configuración personalizada? El grupo usará la global.')) return;
+            try {
+                const r = await fetch('/api/grupo/respuesta', {
+                    method: 'DELETE',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ jid: grupoRespuestaActual })
+                });
+                const d = await r.json();
+                if (d.ok) {
+                    toast('🗑️ Configuración quitada');
+                    delete respuestasPorGrupo[grupoRespuestaActual];
+                    cerrarModalRespuesta();
+                    renderGrupos();
+                }
+            } catch (e) { toast('❌ Error de red', true); }
         }
 
         async function cargarCartera() {
@@ -1426,7 +1727,7 @@
         }
 
         async function limpiarHistorialRespuestas() {
-            if (!confirm('¿Limpiar el historial de respuestas "Y" del bot?\n\nEsto no afecta a la cartera.')) return;
+            if (!confirm('¿Limpiar el historial de respuestas del bot?\n\nEsto no afecta a la cartera.')) return;
             try {
                 const r = await fetch('/api/historial/limpiar', { method: 'POST' });
                 const d = await r.json();
@@ -1704,6 +2005,7 @@
                 else delete labels[valor];
                 toast('✅ Alias actualizado');
                 await cargarConfig();
+                await cargarLocalesYGrupos();
             }
         }
 
@@ -1734,6 +2036,7 @@
             if (d.ok) {
                 toast('✅ Añadido');
                 await cargarConfig();
+                await cargarLocalesYGrupos();
             }
         }
 
@@ -1749,6 +2052,7 @@
             if (d.ok) {
                 toast('🗑️ Eliminado');
                 await cargarConfig();
+                await cargarLocalesYGrupos();
             }
         }
 
@@ -1801,6 +2105,7 @@
                 toast('✅ Copiado');
                 cerrarModalCopiar();
                 await cargarConfig();
+                await cargarLocalesYGrupos();
             }
         }
 
@@ -2035,6 +2340,7 @@
                 toast('✅ Agregado');
                 await cargarDetectados();
                 await cargarConfig();
+                await cargarLocalesYGrupos();
             }
         }
 
@@ -2078,6 +2384,7 @@
                 await cargarStatus();
                 await cargarConfig();
                 await cargarPendientes();
+                await cargarLocalesYGrupos();
                 const badge = document.getElementById('pendientes-badge');
                 const count = document.getElementById('pendientes-count');
                 if (colaPendientes.length > 0) {
