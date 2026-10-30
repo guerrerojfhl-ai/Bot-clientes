@@ -12,6 +12,7 @@ const qrcode = require('qrcode-terminal');
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const NodeCache = require('node-cache');
 
 // ⚡ OPTIMIZACIONES
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
@@ -37,6 +38,8 @@ const CONFIG = {
     ZONAS: {},
     Y: 'Y',
     phoneNumber: '',
+    respuestaGlobal: { texto: 'Y', citado: true },
+    respuestasPorGrupo: {},
 };
 
 // ==================== CARTERA VIRTUAL ====================
@@ -165,6 +168,9 @@ const prewarmsRecientes = new Map();
 const PREWARM_TTL_MS = 30 * 60 * 1000;
 const BOT_INSTANCE_ID = Date.now();
 
+// ✅ Fix #2: Cache de metadata de grupos (5 min TTL)
+const groupCache = new NodeCache({ stdTTL: 5 * 60, useClones: false });
+
 function yaFuePrewarmed(grupo) {
     const ts = prewarmsRecientes.get(grupo);
     if (!ts) return false;
@@ -238,6 +244,8 @@ function estructuraVacia() {
         zonas: {},
         labels: {},
         phoneNumber: '',
+        respuestaGlobal: { texto: 'Y', citado: true },
+        respuestasPorGrupo: {},
     };
 }
 
@@ -248,6 +256,8 @@ function cargarDinamico() {
             d.zonas = d.zonas || {};
             d.labels = d.labels || {};
             d.phoneNumber = d.phoneNumber || '';
+            d.respuestaGlobal = d.respuestaGlobal || { texto: 'Y', citado: true };
+            d.respuestasPorGrupo = d.respuestasPorGrupo || {};
 
             if (Object.keys(d.zonas).length === 0) {
                 d.zonas = zonasPorDefecto();
@@ -274,6 +284,8 @@ function cargarDinamico() {
         zonas: zonasPorDefecto(),
         labels: {},
         phoneNumber: '',
+        respuestaGlobal: { texto: 'Y', citado: true },
+        respuestasPorGrupo: {},
     };
     try {
         fs.writeFileSync(CONFIG_PATH, JSON.stringify(base, null, 2));
@@ -292,6 +304,8 @@ function aplicarCambios() {
     const d = cargarDinamico();
     if (d.labels) Object.assign(LABELS, d.labels);
     if (d.phoneNumber) CONFIG.phoneNumber = d.phoneNumber;
+    if (d.respuestaGlobal) CONFIG.respuestaGlobal = d.respuestaGlobal;
+    if (d.respuestasPorGrupo) CONFIG.respuestasPorGrupo = d.respuestasPorGrupo;
 
     for (const [zonaKey, zd] of Object.entries(d.zonas)) {
         if (!CONFIG.ZONAS[zonaKey]) {
@@ -366,11 +380,24 @@ function extraerNumeroReal(msg, sender) {
     return numero;
 }
 
+// 🔽 Obtener respuesta configurada para un grupo (con fallback a global)
+function obtenerRespuesta(grupoJid) {
+    const cfg = CONFIG.respuestasPorGrupo?.[grupoJid];
+    if (cfg && cfg.texto) return cfg;
+    return CONFIG.respuestaGlobal || { texto: 'Y', citado: true };
+}
+
 async function enviarYInstantaneo(sock, sender, msg, zonaKey) {
     try {
         if (!msg.key?.id) return;
 
-        await sock.sendMessage(sender, { text: CONFIG.Y }, { quoted: msg });
+        const respuesta = obtenerRespuesta(sender);
+        const texto = respuesta.texto || 'Y';
+        const citado = respuesta.citado !== false;
+
+        const opciones = citado ? { quoted: msg } : {};
+
+        await sock.sendMessage(sender, { text: texto }, opciones);
 
         setImmediate(() => {
             try {
@@ -384,7 +411,7 @@ async function enviarYInstantaneo(sock, sender, msg, zonaKey) {
                     zona?.nombre || zonaKey,
                     sender,
                     numero,
-                    'Y'
+                    texto
                 );
 
                 agregarPendiente(
@@ -433,7 +460,7 @@ async function prewarmZona(zonaKey) {
                 continue;
             }
 
-            if (!primera) await new Promise(r => setTimeout(r, 4000));
+            if (!primera) await new Promise(r => setTimeout(r, 8000));
             primera = false;
             try {
                 await sock.sendMessage(g, { text: '.' });
@@ -469,7 +496,7 @@ async function prewarmGlobal() {
             continue;
         }
 
-        if (!primera) await new Promise(r => setTimeout(r, 4000));
+        if (!primera) await new Promise(r => setTimeout(r, 8000));
         primera = false;
         try {
             await sock.sendMessage(g, { text: '.' });
@@ -480,7 +507,7 @@ async function prewarmGlobal() {
     return { ok: true, total: todos.size, enviados, fallidos, saltados };
 }
 
-// ==================== REINICIAR (BORRANDO SESIÓN) ====================
+// ==================== REINICIAR ====================
 async function reiniciarBot() {
     if (reiniciando) return;
     reiniciando = true;
@@ -498,6 +525,7 @@ async function reiniciarBot() {
         }
 
         limpiarTodosLosPrewarms();
+        groupCache.flushAll();
 
         pairingCodeActual = null;
         pairingCodeTimestamp = null;
@@ -511,7 +539,6 @@ async function reiniciarBot() {
     }
 }
 
-// ==================== REINICIAR (SIN BORRAR SESIÓN) ====================
 async function reiniciarSinBorrar() {
     if (reiniciando) return;
     reiniciando = true;
@@ -525,6 +552,7 @@ async function reiniciarSinBorrar() {
         await new Promise(r => setTimeout(r, 1500));
 
         limpiarTodosLosPrewarms();
+        groupCache.flushAll();
 
         pairingCodeActual = null;
         pairingCodeTimestamp = null;
@@ -570,6 +598,7 @@ async function startBot() {
             getMessage: async () => undefined,
             syncFullHistory: false,
             markOnlineOnConnect: false,
+            cachedGroupMetadata: async (jid) => groupCache.get(jid),   // ✅ Fix #2
         });
 
         sockGlobal = sock;
@@ -642,6 +671,11 @@ async function startBot() {
             if (!msg?.message) return;
             if (msg.key.remoteJid === 'status@broadcast') return;
 
+            // ✅ Fix #4: marcar como leído (reduce throttling de WhatsApp)
+            if (!msg.key.fromMe) {
+                try { await sock.readMessages([msg.key]); } catch (e) {}
+            }
+
             const sender = msg.key.remoteJid;
             const fromMe = msg.key.fromMe;
             const isGroup = sender?.endsWith('@g.us') || false;
@@ -654,7 +688,11 @@ async function startBot() {
                 if (textoRapido.trim() === '.' || textoRapido.trim() === '/info') {
                     let nombreGrupo = null;
                     try {
-                        const metadata = await sock.groupMetadata(sender);
+                        let metadata = groupCache.get(sender);          // ✅ Fix #2
+                        if (!metadata) {
+                            metadata = await sock.groupMetadata(sender);
+                            groupCache.set(sender, metadata);
+                        }
                         nombreGrupo = metadata.subject;
                     } catch (e) {
                         console.log('⚠️ No se pudo obtener nombre del grupo:', e.message);
@@ -729,6 +767,27 @@ app.use(express.static(PUBLIC_DIR, {
     }
 }));
 
+// 🔽 Calcular locales y grupos ÚNICOS (sin duplicar entre zonas)
+function calcularUnicos() {
+    const localesUnicos = new Set();
+    const gruposUnicos = new Set();
+    const keywordsUnicas = new Set();
+
+    for (const z of Object.values(CONFIG.ZONAS)) {
+        z.IMAGE_NUMBERS.forEach(n => localesUnicos.add(n));
+        z.KEYWORD_NUMBERS.forEach(n => localesUnicos.add(n));
+        z.IMAGE_GROUPS.forEach(g => gruposUnicos.add(g));
+        z.KEYWORD_GROUPS.forEach(g => gruposUnicos.add(g));
+        z.KEYWORDS.forEach(k => keywordsUnicas.add(k));
+    }
+
+    return {
+        localesUnicos: localesUnicos.size,
+        gruposUnicos: gruposUnicos.size,
+        keywordsUnicas: keywordsUnicas.size,
+    };
+}
+
 app.get('/api/config', (req, res) => {
     const d = cargarDinamico();
     limpiarPrewarmsExpirados();
@@ -760,7 +819,74 @@ app.get('/api/config', (req, res) => {
             orden: d.zonas[k]?.orden || 0,
         };
     }
-    res.json({ zonas, labels: d.labels });
+
+    const unicos = calcularUnicos();
+
+    res.json({
+        zonas,
+        labels: d.labels,
+        unicos,
+        respuestaGlobal: d.respuestaGlobal || { texto: 'Y', citado: true },
+        respuestasPorGrupo: d.respuestasPorGrupo || {},
+    });
+});
+
+// 🔽 Endpoint: locales únicos con sus zonas
+app.get('/api/locales-unicos', (req, res) => {
+    const mapa = new Map();
+
+    for (const [zonaKey, zona] of Object.entries(CONFIG.ZONAS)) {
+        const todosNumeros = new Set([...zona.IMAGE_NUMBERS, ...zona.KEYWORD_NUMBERS]);
+        for (const num of todosNumeros) {
+            if (!mapa.has(num)) {
+                mapa.set(num, {
+                    numero: num,
+                    tipo: [],
+                    zonas: [],
+                });
+            }
+            const entry = mapa.get(num);
+            if (zona.IMAGE_NUMBERS.has(num) && !entry.tipo.includes('imagen')) entry.tipo.push('imagen');
+            if (zona.KEYWORD_NUMBERS.has(num) && !entry.tipo.includes('keyword')) entry.tipo.push('keyword');
+            if (!entry.zonas.includes(zona.nombre)) entry.zonas.push(zona.nombre);
+        }
+    }
+
+    const lista = Array.from(mapa.values()).sort((a, b) => a.numero.localeCompare(b.numero));
+    res.json(lista);
+});
+
+// 🔽 Endpoint: grupos únicos con sus zonas
+app.get('/api/grupos-unicos', (req, res) => {
+    const mapa = new Map();
+
+    for (const [zonaKey, zona] of Object.entries(CONFIG.ZONAS)) {
+        const todosGrupos = new Set([...zona.IMAGE_GROUPS, ...zona.KEYWORD_GROUPS]);
+        for (const jid of todosGrupos) {
+            if (!mapa.has(jid)) {
+                mapa.set(jid, {
+                    jid,
+                    tipo: [],
+                    zonas: [],
+                    calentado: false,
+                    expiraEn: 0,
+                });
+            }
+            const entry = mapa.get(jid);
+            if (zona.IMAGE_GROUPS.has(jid) && !entry.tipo.includes('imagen')) entry.tipo.push('imagen');
+            if (zona.KEYWORD_GROUPS.has(jid) && !entry.tipo.includes('keyword')) entry.tipo.push('keyword');
+            if (!entry.zonas.includes(zona.nombre)) entry.zonas.push(zona.nombre);
+
+            const ts = prewarmsRecientes.get(jid);
+            if (ts && (Date.now() - ts) <= PREWARM_TTL_MS) {
+                entry.calentado = true;
+                entry.expiraEn = Math.max(0, Math.floor((PREWARM_TTL_MS - (Date.now() - ts)) / 1000));
+            }
+        }
+    }
+
+    const lista = Array.from(mapa.values()).sort((a, b) => a.jid.localeCompare(b.jid));
+    res.json(lista);
 });
 
 app.post('/api/zona/toggle', (req, res) => {
@@ -773,24 +899,63 @@ app.post('/api/zona/toggle', (req, res) => {
     res.json({ ok: true, activo: d.zonas[zonaKey].botActive });
 });
 
-// 🔽 Apagar TODAS las zonas de golpe
 app.post('/api/zonas/apagar-todas', (req, res) => {
     const d = cargarDinamico();
     let apagadas = 0;
-
     for (const k of Object.keys(d.zonas)) {
         if (d.zonas[k].botActive) {
             d.zonas[k].botActive = false;
             apagadas++;
         }
     }
-
     if (apagadas > 0) {
         guardarDinamico(d);
         aplicarCambios();
     }
-
     res.json({ ok: true, apagadas });
+});
+
+// 🔽 Configuración de respuesta global
+app.post('/api/respuesta-global', (req, res) => {
+    const { texto, citado } = req.body;
+    if (!texto || !texto.trim()) return res.status(400).json({ error: 'texto vacío' });
+    const d = cargarDinamico();
+    d.respuestaGlobal = {
+        texto: String(texto).trim(),
+        citado: citado !== false,
+    };
+    guardarDinamico(d);
+    aplicarCambios();
+    res.json({ ok: true, respuestaGlobal: d.respuestaGlobal });
+});
+
+// 🔽 Configuración de respuesta por grupo
+app.post('/api/grupo/respuesta', (req, res) => {
+    const { jid, texto, citado } = req.body;
+    if (!jid) return res.status(400).json({ error: 'falta jid' });
+    if (!texto || !texto.trim()) return res.status(400).json({ error: 'texto vacío' });
+    const d = cargarDinamico();
+    d.respuestasPorGrupo = d.respuestasPorGrupo || {};
+    d.respuestasPorGrupo[jid] = {
+        texto: String(texto).trim(),
+        citado: citado !== false,
+    };
+    guardarDinamico(d);
+    aplicarCambios();
+    res.json({ ok: true, respuesta: d.respuestasPorGrupo[jid] });
+});
+
+// 🔽 Quitar configuración por grupo (vuelve a global)
+app.delete('/api/grupo/respuesta', (req, res) => {
+    const { jid } = req.body;
+    if (!jid) return res.status(400).json({ error: 'falta jid' });
+    const d = cargarDinamico();
+    if (d.respuestasPorGrupo && d.respuestasPorGrupo[jid]) {
+        delete d.respuestasPorGrupo[jid];
+        guardarDinamico(d);
+        aplicarCambios();
+    }
+    res.json({ ok: true });
 });
 
 app.post('/api/zona/renombrar', (req, res) => {
@@ -971,7 +1136,7 @@ app.post('/api/prewarm', async (req, res) => {
     res.json(r);
 });
 
-// ==================== CARTERA VIRTUAL ====================
+// ==================== CARTERA ====================
 app.get('/api/cartera', (req, res) => {
     verificarCorteDiario();
     const c = cargarCartera();
@@ -1065,11 +1230,7 @@ app.get('/api/cartera/estadisticas', (req, res) => {
     const totalPedidos = h.length;
     const totalIngresos = h.reduce((s, i) => s + i.monto, 0);
 
-    res.json({
-        totalPedidos,
-        totalIngresos,
-        dias
-    });
+    res.json({ totalPedidos, totalIngresos, dias });
 });
 
 app.post('/api/cartera/pendientes/limpiar', (req, res) => {
@@ -1087,11 +1248,7 @@ app.get('/api/prewarms', (req, res) => {
         hace: Math.floor((ahora - ts) / 1000),
         expiraEn: Math.max(0, Math.floor((PREWARM_TTL_MS - (ahora - ts)) / 1000))
     }));
-    res.json({
-        botInstanceId: BOT_INSTANCE_ID,
-        total: lista.length,
-        grupos: lista
-    });
+    res.json({ botInstanceId: BOT_INSTANCE_ID, total: lista.length, grupos: lista });
 });
 
 app.get('/api/prewarms/estado', (req, res) => {
@@ -1104,13 +1261,7 @@ app.get('/api/prewarms/estado', (req, res) => {
         const gruposZona = new Set([...zona.IMAGE_GROUPS, ...zona.KEYWORD_GROUPS]);
         for (const g of gruposZona) {
             if (!todosLosGrupos.has(g)) {
-                todosLosGrupos.set(g, {
-                    grupo: g,
-                    zonas: [],
-                    calentado: false,
-                    expiraEn: 0,
-                    hace: 0
-                });
+                todosLosGrupos.set(g, { grupo: g, zonas: [], calentado: false, expiraEn: 0, hace: 0 });
             }
             todosLosGrupos.get(g).zonas.push(zona.nombre);
         }
@@ -1150,33 +1301,18 @@ app.get('/api/prewarms/estado', (req, res) => {
     });
 });
 
-// ==================== ENDPOINTS DE DETECCIONES ====================
+// ==================== DETECCIONES ====================
 app.get('/api/detectados', (req, res) => {
     const ordenados = Array.from(detecciones.values()).sort((a, b) => b.ultimaVez - a.ultimaVez);
     const cfg = cargarDinamico();
-    const enriquecidos = ordenados.map(d => {
-        return {
-            jid: d.jid,
-            numero: d.numero,
-            nombreGrupo: d.nombreGrupo || null,
-            ultimoTexto: d.ultimoTexto,
-            ultimaVez: d.ultimaVez,
-            veces: d.veces,
-            tipo: d.tipo,
-            yaEnImageGroups: Object.values(cfg.zonas).some(z =>
-                (z.image_groups_extra || []).includes(d.jid)
-            ),
-            yaEnKeywordGroups: Object.values(cfg.zonas).some(z =>
-                (z.keyword_groups_extra || []).includes(d.jid)
-            ),
-            enImageNumbers: d.numero ? Object.values(cfg.zonas).some(z =>
-                (z.image_numbers_extra || []).includes(d.numero)
-            ) : false,
-            enKeywordNumbers: d.numero ? Object.values(cfg.zonas).some(z =>
-                (z.keyword_numbers_extra || []).includes(d.numero)
-            ) : false,
-        };
-    });
+    const enriquecidos = ordenados.map(d => ({
+        jid: d.jid, numero: d.numero, nombreGrupo: d.nombreGrupo || null,
+        ultimoTexto: d.ultimoTexto, ultimaVez: d.ultimaVez, veces: d.veces, tipo: d.tipo,
+        yaEnImageGroups: Object.values(cfg.zonas).some(z => (z.image_groups_extra || []).includes(d.jid)),
+        yaEnKeywordGroups: Object.values(cfg.zonas).some(z => (z.keyword_groups_extra || []).includes(d.jid)),
+        enImageNumbers: d.numero ? Object.values(cfg.zonas).some(z => (z.image_numbers_extra || []).includes(d.numero)) : false,
+        enKeywordNumbers: d.numero ? Object.values(cfg.zonas).some(z => (z.keyword_numbers_extra || []).includes(d.numero)) : false,
+    }));
     res.json(enriquecidos);
 });
 
@@ -1199,18 +1335,14 @@ app.post('/api/detectados/aplicar', (req, res) => {
         const keyRemoved = `${destino}_removed`;
         const idxR = d.zonas[zonaKey][keyRemoved].indexOf(jid);
         if (idxR >= 0) d.zonas[zonaKey][keyRemoved].splice(idxR, 1);
-        if (!d.zonas[zonaKey][keyExtra].includes(jid)) {
-            d.zonas[zonaKey][keyExtra].push(jid);
-        }
+        if (!d.zonas[zonaKey][keyExtra].includes(jid)) d.zonas[zonaKey][keyExtra].push(jid);
     } else if (destino === 'image_numbers' || destino === 'keyword_numbers') {
         if (!numero) return res.status(400).json({ error: 'Falta número' });
         const keyExtra = `${destino}_extra`;
         const keyRemoved = `${destino}_removed`;
         const idxR = d.zonas[zonaKey][keyRemoved].indexOf(numero);
         if (idxR >= 0) d.zonas[zonaKey][keyRemoved].splice(idxR, 1);
-        if (!d.zonas[zonaKey][keyExtra].includes(numero)) {
-            d.zonas[zonaKey][keyExtra].push(numero);
-        }
+        if (!d.zonas[zonaKey][keyExtra].includes(numero)) d.zonas[zonaKey][keyExtra].push(numero);
     } else {
         return res.status(400).json({ error: 'Destino inválido' });
     }
@@ -1223,8 +1355,7 @@ app.post('/api/detectados/aplicar', (req, res) => {
 app.get('/api/zonas-lista', (req, res) => {
     const cfg = cargarDinamico();
     const lista = Object.entries(CONFIG.ZONAS).map(([key, z]) => ({
-        key: key,
-        nombre: cfg.zonas[key]?.nombre || z.nombre
+        key, nombre: cfg.zonas[key]?.nombre || z.nombre
     }));
     res.json(lista);
 });
@@ -1257,27 +1388,21 @@ app.post('/api/phone', async (req, res) => {
     setImmediate(() => { reiniciarBot(); });
 });
 
-// 🔽 Reiniciar SIN borrar sesión
 app.post('/api/reiniciar-sin-borrar', (req, res) => {
-    if (reiniciando) {
-        return res.status(400).json({ error: 'Ya se está reiniciando' });
-    }
+    if (reiniciando) return res.status(400).json({ error: 'Ya se está reiniciando' });
     console.log('\n🔄 Reiniciando bot (sin borrar sesión)...\n');
     res.json({ ok: true, mensaje: 'Reiniciando bot sin borrar sesión...' });
     setImmediate(() => { reiniciarSinBorrar(); });
 });
 
 app.post('/api/regenerar-pairing', async (req, res) => {
-    if (!CONFIG.phoneNumber) {
-        return res.status(400).json({ error: 'Primero configura el teléfono' });
-    }
+    if (!CONFIG.phoneNumber) return res.status(400).json({ error: 'Primero configura el teléfono' });
     try {
         if (sockGlobal && !sockGlobal.user) {
             const code = await sockGlobal.requestPairingCode(CONFIG.phoneNumber);
             pairingCodeActual = code;
             pairingCodeTimestamp = Date.now();
             pairingQRActual = null;
-            console.log(`\n🔑 CÓDIGO DE ENLACE: ${code}\n`);
             return res.json({ ok: true, pairingCode: code });
         }
         res.status(400).json({ error: 'El bot ya está conectado o no está listo' });
@@ -1289,12 +1414,12 @@ app.post('/api/regenerar-pairing', async (req, res) => {
 app.get('/api/status', (req, res) => {
     res.json({
         conectado: sockGlobal?.user ? true : false,
-        numeroConectado: numeroConectado,
+        numeroConectado,
         telefonoConfigurado: CONFIG.phoneNumber,
         pairingCode: pairingCodeActual,
-        pairingCodeTimestamp: pairingCodeTimestamp,
+        pairingCodeTimestamp,
         tieneQR: !!pairingQRActual,
-        reiniciando: reiniciando,
+        reiniciando,
         prewarmsCount: prewarmsRecientes.size,
         carteraPendientes: pedidosPendientes.length,
     });
@@ -1303,7 +1428,7 @@ app.get('/api/status', (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, '127.0.0.1', () => {
     console.log('\n╔════════════════════════════════════════╗');
-    console.log('║      🤖  BotClientesRepartidores       ║');
+    console.log('║      🤖  Admin Powered · RealOne       ║');
     console.log('╚════════════════════════════════════════╝');
     console.log('');
     console.log(`   🌐 Panel: http://127.0.0.1:${PORT}`);
@@ -1322,6 +1447,18 @@ cargarCartera();
 verificarCorteDiario();
 
 startBot();
+
+// ==================== AUTO-REINICIO CADA 2 HORAS (Fix #3) ====================
+const AUTO_RESTART_MS = 2 * 60 * 60 * 1000; // 2 horas
+
+setInterval(() => {
+    if (reiniciando) {
+        console.log('⏰ Auto-reinicio saltado (ya se está reiniciando)');
+        return;
+    }
+    console.log('\n⏰ Auto-reinicio programado (cada 2h, manteniendo sesión)...');
+    reiniciarSinBorrar();
+}, AUTO_RESTART_MS);
 
 process.on('uncaughtException', (e) => console.log(`⚠️ ${e.message}`));
 process.on('unhandledRejection', (e) => console.log(`⚠️ ${e}`));
