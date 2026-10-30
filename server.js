@@ -504,7 +504,7 @@ async function prewarmZona(zonaKey) {
         let enviados = 0, fallidos = 0, saltados = 0, primera = true;
         for (const g of todos) {
             if (yaFuePrewarmed(g)) { saltados++; continue; }
-            if (!primera) await new Promise(r => setTimeout(r, 4000));
+            if (!primera) await new Promise(r => setTimeout(r, 8000));
             primera = false;
             try {
                 await sock.sendMessage(g, { text: '.' });
@@ -533,7 +533,7 @@ async function prewarmGlobal() {
     let enviados = 0, fallidos = 0, saltados = 0, primera = true;
     for (const g of todos) {
         if (yaFuePrewarmed(g)) { saltados++; continue; }
-        if (!primera) await new Promise(r => setTimeout(r, 4000));
+        if (!primera) await new Promise(r => setTimeout(r, 8000));
         primera = false;
         try {
             await sock.sendMessage(g, { text: '.' });
