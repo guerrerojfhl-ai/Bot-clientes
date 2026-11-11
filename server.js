@@ -177,8 +177,9 @@ const prewarmsRecientes = new Map();
 const PREWARM_TTL_MS = 30 * 60 * 1000;
 const BOT_INSTANCE_ID = Date.now();
 
-// ✅ Fix #2: cache de metadata (5 min)
-const groupCache = new NodeCache({ stdTTL: 5 * 60, useClones: false });
+// 🔧 OPTIMIZADO: TTL subido a 30 min + invalidación por eventos
+const GROUP_CACHE_TTL_SEC = 30 * 60;
+const groupCache = new NodeCache({ stdTTL: GROUP_CACHE_TTL_SEC, useClones: false });
 
 function yaFuePrewarmed(grupo) {
     const ts = prewarmsRecientes.get(grupo);
@@ -210,6 +211,29 @@ function limpiarTodosLosPrewarms() {
 }
 
 setInterval(limpiarPrewarmsExpirados, 60 * 1000);
+
+// ==================== ANTI-DUPLICADOS ====================
+// 🔧 NUEVO: evita mandar el mismo "." al mismo grupo en menos de X ms
+const PREWARM_EN_CURSO = new Set();      // grupos con prewarm en vuelo
+const PREWARM_COOLDOWN_MS = 60 * 1000;   // 1 min de cooldown por grupo tras prewarm exitoso
+const prewarmUltimoEnvio = new Map();    // grupo -> timestamp último "."
+
+// 🔧 NUEVO: evita mandar múltiples "Y" al mismo local en ráfaga
+// Clave: `${grupo}|${numero}` -> timestamp del último "Y" enviado
+const yUltimoEnvio = new Map();
+const Y_COOLDOWN_MS = 8 * 1000;          // 8s de cooldown por local en el mismo grupo
+const yEnCurso = new Set();              // claves con "Y" en vuelo
+
+// Limpieza periódica de cooldowns para no acumular memoria
+setInterval(() => {
+    const ahora = Date.now();
+    for (const [grupo, ts] of prewarmUltimoEnvio) {
+        if (ahora - ts > PREWARM_COOLDOWN_MS * 5) prewarmUltimoEnvio.delete(grupo);
+    }
+    for (const [clave, ts] of yUltimoEnvio) {
+        if (ahora - ts > Y_COOLDOWN_MS * 10) yUltimoEnvio.delete(clave);
+    }
+}, 60 * 1000);
 
 // ==================== VARIABLES GLOBALES ====================
 let sockGlobal = null;
@@ -341,6 +365,9 @@ function aplicarCambios() {
         zona.KEYWORD_GROUPS.clear();
         zona.KEYWORD_NUMBERS.clear();
 
+        // 🔧 Reset de KEYWORDS base
+        zona.KEYWORDS = ['solicita', 'solicito'];
+
         zd.image_groups_extra.forEach(g => zona.IMAGE_GROUPS.add(g));
         zd.image_numbers_extra.forEach(n => zona.IMAGE_NUMBERS.add(n));
         zd.keyword_groups_extra.forEach(g => zona.KEYWORD_GROUPS.add(g));
@@ -443,51 +470,82 @@ async function enviarYInstantaneo(sock, sender, msg, zonaKey) {
     try {
         if (!msg.key?.id) return;
 
+        // 🔧 ANTI-DUPLICADOS "Y": cooldown por local en el mismo grupo
+        const numero = extraerNumeroReal(msg, sender);
+        const claveDup = `${sender}|${numero}`;
+        const ahora = Date.now();
+        const ultimoY = yUltimoEnvio.get(claveDup);
+        if (ultimoY && (ahora - ultimoY) < Y_COOLDOWN_MS) {
+            console.log(`🚫 Y duplicada evitada (${claveDup}, hace ${ahora - ultimoY}ms)`);
+            return;
+        }
+        if (yEnCurso.has(claveDup)) {
+            console.log(`🚫 Y en curso, evitada (${claveDup})`);
+            return;
+        }
+        yEnCurso.add(claveDup);
+
         const respuesta = obtenerRespuesta(sender);
         const texto = respuesta.texto || 'Y';
         const citado = respuesta.citado !== false;
 
-        await new Promise(r => setTimeout(r, 400));  // ⏱️ DELAY CLIENTES — NO BORRAR
+        // 🔧 Delay de 400ms conservado (NO QUITAR)
+        await new Promise(r => setTimeout(r, 400));
 
         const opciones = citado ? { quoted: msg } : {};
         await sock.sendMessage(sender, { text: texto }, opciones);
 
-        if (zonaKey) {
-            const zona = CONFIG.ZONAS[zonaKey];
-            const numero = extraerNumeroReal(msg, sender);
+        // Marcar timestamp del último "Y"
+        yUltimoEnvio.set(claveDup, Date.now());
+        yEnCurso.delete(claveDup);
 
-            agregarHistorial(
-                zonaKey,
-                zona?.nombre || zonaKey,
-                sender,
-                numero,
-                texto
-            );
+        // 🔧 Trabajo de fondo en setImmediate (no bloquea el event loop)
+        setImmediate(() => {
+            try {
+                if (!zonaKey) return;
 
-            agregarPendiente(
-                zona?.nombre || zonaKey,
-                sender,
-                numero
-            );
+                const zona = CONFIG.ZONAS[zonaKey];
 
-            const d = cargarDinamico();
-            let huboCambio = false;
+                agregarHistorial(
+                    zonaKey,
+                    zona?.nombre || zonaKey,
+                    sender,
+                    numero,
+                    texto
+                );
 
-            // 🔽 Modo cacería: al responder una zona, apagar TODAS
-            for (const k of Object.keys(d.zonas)) {
-                if (d.zonas[k].botActive) {
-                    d.zonas[k].botActive = false;
-                    huboCambio = true;
+                agregarPendiente(
+                    zona?.nombre || zonaKey,
+                    sender,
+                    numero
+                );
+
+                const d = cargarDinamico();
+                let huboCambio = false;
+
+                // Modo cacería: al responder una zona, apagar TODAS
+                for (const k of Object.keys(d.zonas)) {
+                    if (d.zonas[k].botActive) {
+                        d.zonas[k].botActive = false;
+                        huboCambio = true;
+                    }
                 }
-            }
 
-            if (huboCambio) {
-                guardarDinamico(d);
-                aplicarCambios();
+                if (huboCambio) {
+                    guardarDinamico(d);
+                    aplicarCambios();
+                }
+            } catch (e) {
+                console.log(`⚠️ Error en trabajo de fondo (Y): ${e.message}`);
             }
-        }
+        });
     } catch (e) {
         console.log(`⚠️ Error al enviar Y: ${e.message}`);
+        // 🔧 Limpiar flag en caso de error
+        try {
+            const numero = extraerNumeroReal(msg, sender);
+            yEnCurso.delete(`${sender}|${numero}`);
+        } catch (e2) {}
     }
 }
 
@@ -504,13 +562,30 @@ async function prewarmZona(zonaKey) {
         let enviados = 0, fallidos = 0, saltados = 0, primera = true;
         for (const g of todos) {
             if (yaFuePrewarmed(g)) { saltados++; continue; }
+
+            // 🔧 ANTI-DUPLICADOS ".": saltar si ya hay prewarm en curso o cooldown activo
+            if (PREWARM_EN_CURSO.has(g)) {
+                console.log(`🚫 Prewarm en curso, saltado: ${g}`);
+                saltados++;
+                continue;
+            }
+            const ultimo = prewarmUltimoEnvio.get(g);
+            if (ultimo && (Date.now() - ultimo) < PREWARM_COOLDOWN_MS) {
+                console.log(`🚫 Prewarm en cooldown (${Date.now() - ultimo}ms), saltado: ${g}`);
+                saltados++;
+                continue;
+            }
+
+            PREWARM_EN_CURSO.add(g);
             if (!primera) await new Promise(r => setTimeout(r, 8000));
             primera = false;
             try {
                 await sock.sendMessage(g, { text: '.' });
                 marcarPrewarmed(g);
+                prewarmUltimoEnvio.set(g, Date.now());
                 enviados++;
             } catch (e) { fallidos++; }
+            finally { PREWARM_EN_CURSO.delete(g); }
         }
         return { ok: true, total: todos.size, enviados, fallidos, saltados, zona: zona.nombre };
     } catch (e) {
@@ -533,13 +608,30 @@ async function prewarmGlobal() {
     let enviados = 0, fallidos = 0, saltados = 0, primera = true;
     for (const g of todos) {
         if (yaFuePrewarmed(g)) { saltados++; continue; }
+
+        // 🔧 ANTI-DUPLICADOS ".": saltar si ya hay prewarm en curso o cooldown activo
+        if (PREWARM_EN_CURSO.has(g)) {
+            console.log(`🚫 Prewarm global en curso, saltado: ${g}`);
+            saltados++;
+            continue;
+        }
+        const ultimo = prewarmUltimoEnvio.get(g);
+        if (ultimo && (Date.now() - ultimo) < PREWARM_COOLDOWN_MS) {
+            console.log(`🚫 Prewarm global en cooldown (${Date.now() - ultimo}ms), saltado: ${g}`);
+            saltados++;
+            continue;
+        }
+
+        PREWARM_EN_CURSO.add(g);
         if (!primera) await new Promise(r => setTimeout(r, 8000));
         primera = false;
         try {
             await sock.sendMessage(g, { text: '.' });
             marcarPrewarmed(g);
+            prewarmUltimoEnvio.set(g, Date.now());
             enviados++;
         } catch (e) { fallidos++; }
+        finally { PREWARM_EN_CURSO.delete(g); }
     }
     return { ok: true, total: todos.size, enviados, fallidos, saltados };
 }
@@ -563,6 +655,10 @@ async function reiniciarBot() {
 
         limpiarTodosLosPrewarms();
         groupCache.flushAll();
+        PREWARM_EN_CURSO.clear();
+        prewarmUltimoEnvio.clear();
+        yEnCurso.clear();
+        yUltimoEnvio.clear();
 
         pairingCodeActual = null;
         pairingCodeTimestamp = null;
@@ -588,10 +684,15 @@ async function reiniciarSinBorrar() {
             try { sockGlobal.end(undefined); } catch (e) {}
             sockGlobal = null;
         }
-        await new Promise(r => setTimeout(r, 1500));
+        // 🔧 Reducido de 1500 a 300ms para minimizar ventana de inactividad
+        await new Promise(r => setTimeout(r, 300));
 
         limpiarTodosLosPrewarms();
         groupCache.flushAll();
+        PREWARM_EN_CURSO.clear();
+        prewarmUltimoEnvio.clear();
+        yEnCurso.clear();
+        yUltimoEnvio.clear();
 
         pairingCodeActual = null;
         pairingCodeTimestamp = null;
@@ -638,7 +739,14 @@ async function startBot() {
             syncFullHistory: false,
             markOnlineOnConnect: false,
             patchMessageBeforeSending: (msg) => msg,
-            cachedGroupMetadata: async (jid) => groupCache.get(jid),   // ✅ Fix #2
+            // 🔧 cachedGroupMetadata con fallback explícito
+            cachedGroupMetadata: async (jid) => {
+                const cached = groupCache.get(jid);
+                if (cached) return cached;
+                const metadata = await sock.groupMetadata(jid);
+                groupCache.set(jid, metadata);
+                return metadata;
+            },
         });
 
         sockGlobal = sock;
@@ -723,11 +831,21 @@ async function startBot() {
 
         sock.ev.on('creds.update', saveCreds);
 
+        // 🔧 Invalidación de caché por eventos de grupo
+        sock.ev.on('groups.update', (events) => {
+            for (const event of events) {
+                if (event.id) groupCache.del(event.id);
+            }
+        });
+
+        sock.ev.on('group-participants.update', (event) => {
+            if (event.id) groupCache.del(event.id);
+        });
+
         sock.ev.on('messages.upsert', async (m) => {
             const msg = m.messages[0];
             if (!msg?.message) return;
             if (msg.key.remoteJid === 'status@broadcast') return;
-
 
             const sender = msg.key.remoteJid;
             const fromMe = msg.key.fromMe;
@@ -743,7 +861,7 @@ async function startBot() {
                 if (textoRapido.trim() === '.' || textoRapido.trim() === '/info') {
                     let nombreGrupo = null;
                     try {
-                        let metadata = groupCache.get(sender);          // ✅ Fix #2
+                        let metadata = groupCache.get(sender);
                         if (!metadata) {
                             metadata = await sock.groupMetadata(sender);
                             groupCache.set(sender, metadata);
@@ -822,7 +940,6 @@ app.use(express.static(PUBLIC_DIR, {
     }
 }));
 
-// 🔽 Calcular únicos
 function calcularUnicos() {
     const localesUnicos = new Set();
     const gruposUnicos = new Set();
@@ -886,7 +1003,6 @@ app.get('/api/config', (req, res) => {
     });
 });
 
-// 🔽 Endpoint: locales únicos
 app.get('/api/locales-unicos', (req, res) => {
     const mapa = new Map();
 
@@ -907,7 +1023,6 @@ app.get('/api/locales-unicos', (req, res) => {
     res.json(lista);
 });
 
-// 🔽 Endpoint: grupos únicos
 app.get('/api/grupos-unicos', (req, res) => {
     const mapa = new Map();
 
@@ -960,7 +1075,6 @@ app.post('/api/zonas/apagar-todas', (req, res) => {
     res.json({ ok: true, apagadas });
 });
 
-// 🔽 Configuración de respuesta global
 app.post('/api/respuesta-global', (req, res) => {
     const { texto, citado } = req.body;
     if (!texto || !texto.trim()) return res.status(400).json({ error: 'texto vacío' });
@@ -974,7 +1088,6 @@ app.post('/api/respuesta-global', (req, res) => {
     res.json({ ok: true, respuestaGlobal: d.respuestaGlobal });
 });
 
-// 🔽 Configuración por grupo
 app.post('/api/grupo/respuesta', (req, res) => {
     const { jid, texto, citado } = req.body;
     if (!jid) return res.status(400).json({ error: 'falta jid' });
@@ -990,7 +1103,6 @@ app.post('/api/grupo/respuesta', (req, res) => {
     res.json({ ok: true, respuesta: d.respuestasPorGrupo[jid] });
 });
 
-// 🔽 Quitar config por grupo
 app.delete('/api/grupo/respuesta', (req, res) => {
     const { jid } = req.body;
     if (!jid) return res.status(400).json({ error: 'falta jid' });
@@ -1456,13 +1568,35 @@ verificarCorteDiario();
 
 startBot();
 
-// ==================== AUTO-REINICIO CADA 2H (Fix #3) ====================
-const AUTO_RESTART_MS = 2 * 60 * 60 * 1000;
+// ==================== AUTO-REINICIO DIARIO A LAS 4:00 AM (hora CDMX) ====================
+// Solo reinicia si no hay pedidos pendientes. Ventana 4:00-4:04 AM.
+// Escalona por minuto si varios bots comparten archivo (ajusta con env o constante).
+const AUTO_RESTART_HOUR_CDMX = 4;
+const AUTO_RESTART_MINUTE_CDMX = 0;
+let ultimoAutoRestartDia = null;
+
 setInterval(() => {
-    if (reiniciando) { console.log('⏰ Auto-reinicio saltado (ya se está reiniciando)'); return; }
-    console.log('\n⏰ Auto-reinicio programado (cada 2h, manteniendo sesión)...');
+    if (reiniciando) return;
+
+    const ahora = new Date();
+    const ahoraCDMX = new Date(ahora.getTime() - 6 * 60 * 60 * 1000);
+    const diaCDMX = ahoraCDMX.toISOString().slice(0, 10);
+    const horaCDMX = ahoraCDMX.getUTCHours();
+    const minutoCDMX = ahoraCDMX.getUTCMinutes();
+
+    if (horaCDMX !== AUTO_RESTART_HOUR_CDMX) return;
+    if (minutoCDMX < AUTO_RESTART_MINUTE_CDMX || minutoCDMX > AUTO_RESTART_MINUTE_CDMX + 4) return;
+    if (ultimoAutoRestartDia === diaCDMX) return;
+
+    if (pedidosPendientes.length > 0) {
+        console.log(`⏰ Auto-reinicio 4AM saltado (${pedidosPendientes.length} pedidos pendientes). Reintentando en el próximo minuto.`);
+        return;
+    }
+
+    ultimoAutoRestartDia = diaCDMX;
+    console.log('\n⏰ Auto-reinicio diario 4:00 AM (sin pedidos pendientes)...');
     reiniciarSinBorrar();
-}, AUTO_RESTART_MS);
+}, 60 * 1000);
 
 process.on('uncaughtException', (e) => console.log(`⚠️ ${e.message}`));
 process.on('unhandledRejection', (e) => console.log(`⚠️ ${e}`));
