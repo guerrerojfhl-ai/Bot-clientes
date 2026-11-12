@@ -245,6 +245,15 @@ let licenciaValida = null;
 let licenciaRazon = 'SIN LICENCIA';
 let numeroConectado = null;
 
+// 🔧 Estado de salud de la "Y" para el panel
+let yHealthStatus = {
+    ok: true,
+    lastError: null,
+    lastFailureTimestamp: null,
+    lastSuccessTimestamp: null,
+    consecutiveFailures: 0
+};
+
 // ==================== PERSISTENCIA ====================
 const LABELS = {};
 
@@ -493,7 +502,24 @@ async function enviarYInstantaneo(sock, sender, msg, zonaKey) {
         await new Promise(r => setTimeout(r, 400));
 
         const opciones = citado ? { quoted: msg } : {};
-        await sock.sendMessage(sender, { text: texto }, opciones);
+        try {
+            await sock.sendMessage(sender, { text: texto }, opciones);
+            // 🔧 Envío exitoso → marcar salud OK
+            yHealthStatus.ok = true;
+            yHealthStatus.lastSuccessTimestamp = Date.now();
+            yHealthStatus.consecutiveFailures = 0;
+        } catch (sendError) {
+            // 🔧 Envío falló → registrar para el panel
+            console.error(`🚨 FALLO AL ENVIAR "Y": ${sendError.message}`);
+            yHealthStatus.ok = false;
+            yHealthStatus.lastError = sendError.message;
+            yHealthStatus.lastFailureTimestamp = Date.now();
+            yHealthStatus.consecutiveFailures += 1;
+            // Liberar flags para que el próximo intento pueda probar
+            yEnCurso.delete(claveDup);
+            yUltimoEnvio.delete(claveDup);
+            return;
+        }
 
         // Marcar timestamp del último "Y"
         yUltimoEnvio.set(claveDup, Date.now());
@@ -665,6 +691,15 @@ async function reiniciarBot() {
         pairingQRActual = null;
         licenciaValida = null;
         licenciaRazon = 'SIN LICENCIA';
+
+        // 🔧 Resetear salud de la Y al renovar sesión
+        yHealthStatus = {
+            ok: true,
+            lastError: null,
+            lastFailureTimestamp: null,
+            lastSuccessTimestamp: null,
+            consecutiveFailures: 0
+        };
 
         await startBot();
     } catch (e) {
@@ -1542,6 +1577,7 @@ app.get('/api/status', (req, res) => {
         reiniciando,
         prewarmsCount: prewarmsRecientes.size,
         carteraPendientes: pedidosPendientes.length,
+        yHealth: yHealthStatus  // 🔧 NUEVO
     });
 });
 
