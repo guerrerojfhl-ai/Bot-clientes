@@ -53,6 +53,24 @@ const CONFIG = {
     respuestasPorGrupo: {},
 };
 
+// ==================== VALIDADORES ANTI-TONTOS ====================
+// 🔒 Valida que sea un JID de grupo válido (termina en @g.us)
+function esJidGrupo(valor) {
+    return typeof valor === 'string' && /^\d{10,20}@g\.us$/.test(valor);
+}
+
+// 🔒 Valida que sea un número de local válido (521 + 10 dígitos = 13)
+function esNumeroLocal(valor) {
+    return typeof valor === 'string' && /^521\d{10}$/.test(valor);
+}
+
+// 🔒 Normaliza un número: quita todo lo que no sea dígito, agrega el 1 si falta
+function normalizarNumero(valor) {
+    let n = String(valor || '').replace(/\D/g, '');
+    if (n.startsWith('52') && n.length === 12) n = '521' + n.slice(2);
+    return n;
+}
+
 // ==================== CARTERA VIRTUAL ====================
 function carteraVacia() {
     return {
@@ -213,18 +231,14 @@ function limpiarTodosLosPrewarms() {
 setInterval(limpiarPrewarmsExpirados, 60 * 1000);
 
 // ==================== ANTI-DUPLICADOS ====================
-// 🔧 NUEVO: evita mandar el mismo "." al mismo grupo en menos de X ms
-const PREWARM_EN_CURSO = new Set();      // grupos con prewarm en vuelo
-const PREWARM_COOLDOWN_MS = 60 * 1000;   // 1 min de cooldown por grupo tras prewarm exitoso
-const prewarmUltimoEnvio = new Map();    // grupo -> timestamp último "."
+const PREWARM_EN_CURSO = new Set();
+const PREWARM_COOLDOWN_MS = 60 * 1000;
+const prewarmUltimoEnvio = new Map();
 
-// 🔧 NUEVO: evita mandar múltiples "Y" al mismo local en ráfaga
-// Clave: `${grupo}|${numero}` -> timestamp del último "Y" enviado
 const yUltimoEnvio = new Map();
-const Y_COOLDOWN_MS = 8 * 1000;          // 8s de cooldown por local en el mismo grupo
-const yEnCurso = new Set();              // claves con "Y" en vuelo
+const Y_COOLDOWN_MS = 8 * 1000;
+const yEnCurso = new Set();
 
-// Limpieza periódica de cooldowns para no acumular memoria
 setInterval(() => {
     const ahora = Date.now();
     for (const [grupo, ts] of prewarmUltimoEnvio) {
@@ -245,7 +259,6 @@ let licenciaValida = null;
 let licenciaRazon = 'SIN LICENCIA';
 let numeroConectado = null;
 
-// 🔧 Estado de salud de la "Y" para el panel
 let yHealthStatus = {
     ok: true,
     lastError: null,
@@ -374,7 +387,6 @@ function aplicarCambios() {
         zona.KEYWORD_GROUPS.clear();
         zona.KEYWORD_NUMBERS.clear();
 
-        // 🔧 Reset de KEYWORDS base
         zona.KEYWORDS = ['solicita', 'solicito'];
 
         zd.image_groups_extra.forEach(g => zona.IMAGE_GROUPS.add(g));
@@ -479,7 +491,6 @@ async function enviarYInstantaneo(sock, sender, msg, zonaKey) {
     try {
         if (!msg.key?.id) return;
 
-        // 🔧 ANTI-DUPLICADOS "Y": cooldown por local en el mismo grupo
         const numero = extraerNumeroReal(msg, sender);
         const claveDup = `${sender}|${numero}`;
         const ahora = Date.now();
@@ -498,34 +509,28 @@ async function enviarYInstantaneo(sock, sender, msg, zonaKey) {
         const texto = respuesta.texto || 'Y';
         const citado = respuesta.citado !== false;
 
-        // 🔧 Delay de 400ms conservado (NO QUITAR)
         await new Promise(r => setTimeout(r, 400));
 
         const opciones = citado ? { quoted: msg } : {};
         try {
             await sock.sendMessage(sender, { text: texto }, opciones);
-            // 🔧 Envío exitoso → marcar salud OK
             yHealthStatus.ok = true;
             yHealthStatus.lastSuccessTimestamp = Date.now();
             yHealthStatus.consecutiveFailures = 0;
         } catch (sendError) {
-            // 🔧 Envío falló → registrar para el panel
             console.error(`🚨 FALLO AL ENVIAR "Y": ${sendError.message}`);
             yHealthStatus.ok = false;
             yHealthStatus.lastError = sendError.message;
             yHealthStatus.lastFailureTimestamp = Date.now();
             yHealthStatus.consecutiveFailures += 1;
-            // Liberar flags para que el próximo intento pueda probar
             yEnCurso.delete(claveDup);
             yUltimoEnvio.delete(claveDup);
             return;
         }
 
-        // Marcar timestamp del último "Y"
         yUltimoEnvio.set(claveDup, Date.now());
         yEnCurso.delete(claveDup);
 
-        // 🔧 Trabajo de fondo en setImmediate (no bloquea el event loop)
         setImmediate(() => {
             try {
                 if (!zonaKey) return;
@@ -549,7 +554,6 @@ async function enviarYInstantaneo(sock, sender, msg, zonaKey) {
                 const d = cargarDinamico();
                 let huboCambio = false;
 
-                // Modo cacería: al responder una zona, apagar TODAS
                 for (const k of Object.keys(d.zonas)) {
                     if (d.zonas[k].botActive) {
                         d.zonas[k].botActive = false;
@@ -567,7 +571,6 @@ async function enviarYInstantaneo(sock, sender, msg, zonaKey) {
         });
     } catch (e) {
         console.log(`⚠️ Error al enviar Y: ${e.message}`);
-        // 🔧 Limpiar flag en caso de error
         try {
             const numero = extraerNumeroReal(msg, sender);
             yEnCurso.delete(`${sender}|${numero}`);
@@ -589,7 +592,6 @@ async function prewarmZona(zonaKey) {
         for (const g of todos) {
             if (yaFuePrewarmed(g)) { saltados++; continue; }
 
-            // 🔧 ANTI-DUPLICADOS ".": saltar si ya hay prewarm en curso o cooldown activo
             if (PREWARM_EN_CURSO.has(g)) {
                 console.log(`🚫 Prewarm en curso, saltado: ${g}`);
                 saltados++;
@@ -635,7 +637,6 @@ async function prewarmGlobal() {
     for (const g of todos) {
         if (yaFuePrewarmed(g)) { saltados++; continue; }
 
-        // 🔧 ANTI-DUPLICADOS ".": saltar si ya hay prewarm en curso o cooldown activo
         if (PREWARM_EN_CURSO.has(g)) {
             console.log(`🚫 Prewarm global en curso, saltado: ${g}`);
             saltados++;
@@ -692,7 +693,6 @@ async function reiniciarBot() {
         licenciaValida = null;
         licenciaRazon = 'SIN LICENCIA';
 
-        // 🔧 Resetear salud de la Y al renovar sesión
         yHealthStatus = {
             ok: true,
             lastError: null,
@@ -719,7 +719,6 @@ async function reiniciarSinBorrar() {
             try { sockGlobal.end(undefined); } catch (e) {}
             sockGlobal = null;
         }
-        // 🔧 Reducido de 1500 a 300ms para minimizar ventana de inactividad
         await new Promise(r => setTimeout(r, 300));
 
         limpiarTodosLosPrewarms();
@@ -774,7 +773,6 @@ async function startBot() {
             syncFullHistory: false,
             markOnlineOnConnect: false,
             patchMessageBeforeSending: (msg) => msg,
-            // 🔧 cachedGroupMetadata con fallback explícito
             cachedGroupMetadata: async (jid) => {
                 const cached = groupCache.get(jid);
                 if (cached) return cached;
@@ -866,7 +864,6 @@ async function startBot() {
 
         sock.ev.on('creds.update', saveCreds);
 
-        // 🔧 Invalidación de caché por eventos de grupo
         sock.ev.on('groups.update', (events) => {
             for (const event of events) {
                 if (event.id) groupCache.del(event.id);
@@ -1193,6 +1190,7 @@ app.post('/api/zona/eliminar', (req, res) => {
     res.json({ ok: true });
 });
 
+// 🔒 /api/zona/add con validación anti-tontos
 app.post('/api/zona/add', (req, res) => {
     const { zonaKey, tipo, valor, label } = req.body;
     const d = cargarDinamico();
@@ -1201,15 +1199,51 @@ app.post('/api/zona/add', (req, res) => {
     const keyRemoved = `${tipo}_removed`;
     if (!d.zonas[zonaKey][keyExtra]) return res.status(400).json({ error: 'tipo inválido' });
 
-    const idxR = d.zonas[zonaKey][keyRemoved].indexOf(valor);
-    if (idxR >= 0) d.zonas[zonaKey][keyRemoved].splice(idxR, 1);
-    if (!d.zonas[zonaKey][keyExtra].includes(valor)) d.zonas[zonaKey][keyExtra].push(valor);
+    let valorLimpio = String(valor || '').trim();
+    if (!valorLimpio) return res.status(400).json({ error: 'valor vacío' });
 
-    if (label && tipo !== 'keywords') d.labels[valor] = label;
+    // 🔒 VALIDACIÓN ANTI-TONTOS
+    if (tipo === 'image_groups' || tipo === 'keyword_groups') {
+        if (!esJidGrupo(valorLimpio)) {
+            return res.status(400).json({
+                error: '❌ Esto es para GRUPOS. Debes pegar el ID del grupo (termina en @g.us), no un número de teléfono.'
+            });
+        }
+    } else if (tipo === 'image_numbers' || tipo === 'keyword_numbers') {
+        valorLimpio = normalizarNumero(valorLimpio);
+        if (valorLimpio.includes('@')) {
+            return res.status(400).json({
+                error: '❌ Esto es para LOCALES. No debes pegar un ID de grupo (@g.us). Pega solo el número de teléfono.'
+            });
+        }
+        if (!esNumeroLocal(valorLimpio)) {
+            return res.status(400).json({
+                error: `❌ Esto es para LOCALES. El número debe empezar con 521 y tener 13 dígitos en total (521 + 10 dígitos). Recibido: ${valorLimpio.length} dígitos.`
+            });
+        }
+    } else if (tipo === 'keywords') {
+        valorLimpio = valorLimpio.toLowerCase();
+        if (valorLimpio.includes('@')) {
+            return res.status(400).json({
+                error: '❌ Las keywords son palabras o frases de texto. No deben incluir "@" ni IDs.'
+            });
+        }
+        if (/^\d{10,}$/.test(valorLimpio)) {
+            return res.status(400).json({
+                error: '❌ Las keywords son palabras o frases. No deben ser números de teléfono largos.'
+            });
+        }
+    }
+
+    const idxR = d.zonas[zonaKey][keyRemoved].indexOf(valorLimpio);
+    if (idxR >= 0) d.zonas[zonaKey][keyRemoved].splice(idxR, 1);
+    if (!d.zonas[zonaKey][keyExtra].includes(valorLimpio)) d.zonas[zonaKey][keyExtra].push(valorLimpio);
+
+    if (label && tipo !== 'keywords') d.labels[valorLimpio] = label;
 
     guardarDinamico(d);
     aplicarCambios();
-    res.json({ ok: true });
+    res.json({ ok: true, valorLimpio });
 });
 
 app.post('/api/zona/remove', (req, res) => {
@@ -1240,6 +1274,7 @@ app.post('/api/zona/relabel', (req, res) => {
     res.json({ ok: true });
 });
 
+// 🔒 /api/zona/copiar con validación de tipo (no copiar local a grupo ni viceversa)
 app.post('/api/zona/copiar', (req, res) => {
     const { destinoKey, tipo, valor } = req.body;
     if (!destinoKey || !tipo || !valor) return res.status(400).json({ error: 'Faltan parámetros' });
@@ -1247,6 +1282,26 @@ app.post('/api/zona/copiar', (req, res) => {
     if (!d.zonas[destinoKey]) return res.status(400).json({ error: 'Zona destino no existe' });
     const keyExtra = `${tipo}_extra`;
     if (!d.zonas[destinoKey][keyExtra]) return res.status(400).json({ error: 'Tipo inválido' });
+
+    // 🔒 VALIDACIÓN: el valor debe corresponder al tipo destino
+    if (tipo === 'image_groups' || tipo === 'keyword_groups') {
+        if (!esJidGrupo(valor)) {
+            return res.status(400).json({
+                error: '❌ No puedes copiar un LOCAL a un apartado de GRUPOS. El valor debe ser un ID de grupo (termina en @g.us).'
+            });
+        }
+    } else if (tipo === 'image_numbers' || tipo === 'keyword_numbers') {
+        if (!esNumeroLocal(valor)) {
+            return res.status(400).json({
+                error: '❌ No puedes copiar un GRUPO a un apartado de LOCALES. El valor debe ser un número de teléfono (521 + 10 dígitos).'
+            });
+        }
+    } else if (tipo === 'keywords') {
+        return res.status(400).json({
+            error: '❌ Las keywords no se copian entre zonas por este medio. Usa "Añadir Keyword" en la zona destino.'
+        });
+    }
+
     if (!d.zonas[destinoKey][keyExtra].includes(valor)) d.zonas[destinoKey][keyExtra].push(valor);
     guardarDinamico(d);
     aplicarCambios();
@@ -1481,6 +1536,7 @@ app.post('/api/detectados/aplicar', (req, res) => {
 
     if (destino === 'image_groups' || destino === 'keyword_groups') {
         if (!jid) return res.status(400).json({ error: 'Falta jid' });
+        if (!esJidGrupo(jid)) return res.status(400).json({ error: '❌ El jid no es un grupo válido.' });
         const keyExtra = `${destino}_extra`;
         const keyRemoved = `${destino}_removed`;
         const idxR = d.zonas[zonaKey][keyRemoved].indexOf(jid);
@@ -1488,11 +1544,13 @@ app.post('/api/detectados/aplicar', (req, res) => {
         if (!d.zonas[zonaKey][keyExtra].includes(jid)) d.zonas[zonaKey][keyExtra].push(jid);
     } else if (destino === 'image_numbers' || destino === 'keyword_numbers') {
         if (!numero) return res.status(400).json({ error: 'Falta número' });
+        const numNorm = normalizarNumero(numero);
+        if (!esNumeroLocal(numNorm)) return res.status(400).json({ error: '❌ El número no es un local válido (521 + 10 dígitos).' });
         const keyExtra = `${destino}_extra`;
         const keyRemoved = `${destino}_removed`;
-        const idxR = d.zonas[zonaKey][keyRemoved].indexOf(numero);
+        const idxR = d.zonas[zonaKey][keyRemoved].indexOf(numNorm);
         if (idxR >= 0) d.zonas[zonaKey][keyRemoved].splice(idxR, 1);
-        if (!d.zonas[zonaKey][keyExtra].includes(numero)) d.zonas[zonaKey][keyExtra].push(numero);
+        if (!d.zonas[zonaKey][keyExtra].includes(numNorm)) d.zonas[zonaKey][keyExtra].push(numNorm);
     } else {
         return res.status(400).json({ error: 'Destino inválido' });
     }
@@ -1577,7 +1635,7 @@ app.get('/api/status', (req, res) => {
         reiniciando,
         prewarmsCount: prewarmsRecientes.size,
         carteraPendientes: pedidosPendientes.length,
-        yHealth: yHealthStatus  // 🔧 NUEVO
+        yHealth: yHealthStatus
     });
 });
 
@@ -1605,8 +1663,6 @@ verificarCorteDiario();
 startBot();
 
 // ==================== AUTO-REINICIO DIARIO A LAS 4:00 AM (hora CDMX) ====================
-// Solo reinicia si no hay pedidos pendientes. Ventana 4:00-4:04 AM.
-// Escalona por minuto si varios bots comparten archivo (ajusta con env o constante).
 const AUTO_RESTART_HOUR_CDMX = 4;
 const AUTO_RESTART_MINUTE_CDMX = 0;
 let ultimoAutoRestartDia = null;
