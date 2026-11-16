@@ -35,6 +35,7 @@
             --red: #ef4444;
             --yellow: #f59e0b;
             --purple: #8b5cf6;
+            --pink: #ec4899;
             --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
             --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
             --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.5);
@@ -791,6 +792,26 @@
             margin-top: 12px;
         }
 
+        .section-title {
+            font-size: 14px;
+            margin-top: 20px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            text-transform: none;
+        }
+        .section-title.blue { color: #3b82f6; background: rgba(59, 130, 246, 0.12); border-left: 4px solid #3b82f6; }
+        .section-title.purple { color: #a78bfa; background: rgba(139, 92, 246, 0.12); border-left: 4px solid #8b5cf6; }
+        .section-title.green { color: #10b981; background: rgba(16, 185, 129, 0.12); border-left: 4px solid #10b981; }
+        .section-title.yellow { color: #fbbf24; background: rgba(245, 158, 11, 0.12); border-left: 4px solid #f59e0b; }
+        .section-title.pink { color: #f472b6; background: rgba(236, 72, 153, 0.12); border-left: 4px solid #ec4899; }
+        body.light .section-title.blue { color: #1d4ed8; background: rgba(59, 130, 246, 0.1); }
+        body.light .section-title.purple { color: #6d28d9; background: rgba(139, 92, 246, 0.1); }
+        body.light .section-title.green { color: #047857; background: rgba(16, 185, 129, 0.1); }
+        body.light .section-title.yellow { color: #b45309; background: rgba(245, 158, 11, 0.1); }
+        body.light .section-title.pink { color: #be185d; background: rgba(236, 72, 153, 0.1); }
+
         @media (max-width: 480px) {
             .header-title { font-size: 14px; }
             .header-logo { font-size: 24px; }
@@ -1026,10 +1047,10 @@
 
             <label>Tipo de ranura:</label>
             <select id="modal-copiar-tipo">
-                <option value="image_groups">📋 Grupos Imágenes</option>
-                <option value="image_numbers">📱 Números Imágenes</option>
-                <option value="keyword_groups">📋 Grupos Keywords</option>
-                <option value="keyword_numbers">📱 Números Keywords</option>
+                <option value="image_groups">🖼️ Grupos con Pedidos por Imagen</option>
+                <option value="image_numbers">📸 Locales con Pedidos por Imagen</option>
+                <option value="keyword_groups">💬 Grupos con Pedidos por Texto</option>
+                <option value="keyword_numbers">📝 Locales con Pedidos por Texto</option>
             </select>
 
             <div class="modal-actions">
@@ -1113,6 +1134,7 @@
         let labels = {};
         let zonaSeleccionadaPorDetectado = {};
         let modalCopiarValor = null;
+        let modalCopiarTipoOriginal = null;
         let grupoRespuestaActual = null;
         let respuestasPorGrupo = {};
         let respuestaGlobal = { texto: 'Y', citado: true };
@@ -1133,6 +1155,19 @@
         let filtroHistorialActual = 'hoy';
         let localesUnicosCache = [];
         let gruposUnicosCache = [];
+
+        // 🔒 Validadores anti-tontos
+        function esJidGrupo(valor) {
+            return typeof valor === 'string' && /^\d{10,20}@g\.us$/.test(valor);
+        }
+        function esNumeroLocal(valor) {
+            return typeof valor === 'string' && /^521\d{10}$/.test(valor);
+        }
+        function normalizarNumero(valor) {
+            let n = String(valor || '').replace(/\D/g, '');
+            if (n.startsWith('52') && n.length === 12) n = '521' + n.slice(2);
+            return n;
+        }
 
         function toggleTema() {
             document.body.classList.toggle('light');
@@ -1225,7 +1260,6 @@
                 el.className = 'status ' + (d.conectado ? 'on' : 'off');
                 document.getElementById('numero-info').textContent = 'Número: ' + (d.numeroConectado || '--');
 
-                // 🔧 Aviso de salud de la "Y"
                 const avisoY = document.getElementById('aviso-y-health');
                 if (avisoY) {
                     const yh = d.yHealth;
@@ -1270,7 +1304,6 @@
                 document.getElementById('licencia-detalle').textContent =
                     li?.valida ? `Autorizada para: ${d.numeroConectado}` : (li?.razon || '--');
 
-                // 🔑 Pairing card
                 const pairingCard = document.getElementById('pairing-card');
                 const pairingCodeEl = document.getElementById('pairing-code');
                 const pairingInfoEl = document.getElementById('pairing-info');
@@ -1330,7 +1363,7 @@
             try {
                 const r = await fetch('/api/config');
                 const d = await r.json();
-                zonas = d.zonas;
+                zonas = d.zonas || {};
                 labels = d.labels || {};
                 respuestasPorGrupo = d.respuestasPorGrupo || {};
                 respuestaGlobal = d.respuestaGlobal || { texto: 'Y', citado: true };
@@ -1343,7 +1376,7 @@
                 actualizarStats(d.unicos);
                 cargarEstadoCalentamiento();
                 renderGrupos();
-            } catch (e) { console.error(e); }
+            } catch (e) { console.error('Error cargando config:', e); }
         }
 
         function actualizarPreviewGlobal() {
@@ -1873,7 +1906,7 @@
                         ${tieneAlias ? `<b>${escapeHtml(alias)}</b>` : ''}
                         <small style="${tieneAlias ? '' : 'opacity:0.9; font-size:12px;'}">${escapeHtml(valor)}</small>
                     </div>
-                    <button class="copy" onclick="abrirModalCopiar('${escapeHtml(valor)}')" title="Copiar">📋</button>
+                    <button class="copy" onclick="abrirModalCopiar('${escapeHtml(valor)}', '${tipo}')" title="Copiar">📋</button>
                     <button class="edit" onclick="relabel('${escapeHtml(valor)}')" title="Renombrar">✏️</button>
                     <button onclick="quitar('${zonaKey}','${tipo}','${escapeHtml(valor)}')" title="Eliminar">🗑️</button>
                 </div>
@@ -1932,21 +1965,26 @@
                             <button class="gray small" onclick="renombrar('${key}')">✏️ Renombrar</button>
                             <button class="danger small" onclick="eliminarZona('${key}')">🗑️ Eliminar Zona</button>
                         </div>
-                        <h4>📋 Grupos Imágenes (${z.imageGroups.length})</h4>
+
+                        <h4 class="section-title blue">🖼️ Grupos con Pedidos por Imagen (${z.imageGroups.length})</h4>
                         ${z.imageGroups.map(g => itemLista(g, key, 'image_groups')).join('') || '<p class="info">(vacío)</p>'}
-                        <button class="gray small" onclick="agregar('${key}','image_groups')">➕ Añadir Grupo</button>
-                        <h4>📱 Números Imágenes (${z.imageNumbers.length})</h4>
+                        <button class="gray small" onclick="agregar('${key}','image_groups')">➕ Añadir Grupo con Pedidos por Imagen</button>
+
+                        <h4 class="section-title purple">📸 Locales con Pedidos por Imagen (${z.imageNumbers.length})</h4>
                         ${z.imageNumbers.map(n => itemLista(n, key, 'image_numbers')).join('') || '<p class="info">(vacío)</p>'}
-                        <button class="gray small" onclick="agregar('${key}','image_numbers')">➕ Añadir Número</button>
-                        <h4>📋 Grupos Keywords (${z.keywordGroups.length})</h4>
+                        <button class="gray small" onclick="agregar('${key}','image_numbers')">➕ Añadir Local con Pedidos por Imagen</button>
+
+                        <h4 class="section-title green">💬 Grupos con Pedidos por Texto (${z.keywordGroups.length})</h4>
                         ${z.keywordGroups.map(g => itemLista(g, key, 'keyword_groups')).join('') || '<p class="info">(vacío)</p>'}
-                        <button class="gray small" onclick="agregar('${key}','keyword_groups')">➕ Añadir Grupo</button>
-                        <h4>📱 Números Keywords (${z.keywordNumbers.length})</h4>
+                        <button class="gray small" onclick="agregar('${key}','keyword_groups')">➕ Añadir Grupo con Pedidos por Texto</button>
+
+                        <h4 class="section-title yellow">📝 Locales con Pedidos por Texto (${z.keywordNumbers.length})</h4>
                         ${z.keywordNumbers.map(n => itemLista(n, key, 'keyword_numbers')).join('') || '<p class="info">(vacío)</p>'}
-                        <button class="gray small" onclick="agregar('${key}','keyword_numbers')">➕ Añadir Número</button>
-                        <h4>🔤 Keywords (${z.keywords.length})</h4>
+                        <button class="gray small" onclick="agregar('${key}','keyword_numbers')">➕ Añadir Local con Pedidos por Texto</button>
+
+                        <h4 class="section-title pink">🔤 Palabras Clave (Keywords) (${z.keywords.length})</h4>
                         ${z.keywords.map(k => `<div class="lista-item keyword-item"><div class="item-info"><small>${escapeHtml(k)}</small></div><button onclick="quitar('${key}','keywords','${escapeHtml(k)}')">🗑️</button></div>`).join('') || '<p class="info">(vacío)</p>'}
-                        <button class="gray small" onclick="agregar('${key}','keywords')">➕ Añadir Keyword</button>
+                        <button class="gray small" onclick="agregar('${key}','keywords')">➕ Añadir Palabra Clave</button>
                     </div>
                 </div>
                 `;
@@ -2048,20 +2086,64 @@
             const esKeyword = tipo === 'keywords';
             const esNumero = tipo.includes('numbers');
             const esGrupo = tipo.includes('groups');
+
             let msg = 'Valor a añadir:';
-            if (esGrupo) msg = 'ID del grupo:';
-            if (esNumero) msg = 'Número:';
-            if (esKeyword) msg = 'Keyword:';
-            const valor = prompt(msg);
+            let placeholder = '';
+            if (esGrupo) {
+                msg = '📛 ID del grupo (termina en @g.us):\n\nEjemplo: 5216691234567-1234567890@g.us';
+                placeholder = '5216691234567-1234567890@g.us';
+            }
+            if (esNumero) {
+                msg = '📱 Número del local (13 dígitos, empieza con 521):\n\nEjemplo: 5216691234567';
+                placeholder = '5216691234567';
+            }
+            if (esKeyword) {
+                msg = '🔤 Palabra clave (texto simple, sin números largos):\n\nEjemplo: solicito, pedido, quiero';
+                placeholder = 'solicito';
+            }
+
+            const valor = prompt(msg, placeholder);
             if (!valor || !valor.trim()) return;
+
             let valorLimpio = valor.trim();
-            if (esNumero) valorLimpio = valorLimpio.replace(/\D/g, '');
-            if (esKeyword) valorLimpio = valorLimpio.toLowerCase();
+
+            if (esGrupo) {
+                if (!esJidGrupo(valorLimpio)) {
+                    toast('❌ Esto es para GRUPOS. Pega el ID del grupo (termina en @g.us)', true);
+                    return;
+                }
+            }
+
+            if (esNumero) {
+                valorLimpio = normalizarNumero(valorLimpio);
+                if (valorLimpio.includes('@')) {
+                    toast('❌ Esto es para LOCALES. No pegues un ID de grupo (@g.us)', true);
+                    return;
+                }
+                if (!esNumeroLocal(valorLimpio)) {
+                    toast(`❌ El número debe empezar con 521 y tener 13 dígitos (521 + 10). Tiene ${valorLimpio.length}.`, true);
+                    return;
+                }
+            }
+
+            if (esKeyword) {
+                valorLimpio = valorLimpio.toLowerCase();
+                if (valorLimpio.includes('@')) {
+                    toast('❌ Las keywords son palabras, no IDs. No uses "@"', true);
+                    return;
+                }
+                if (/^\d{10,}$/.test(valorLimpio)) {
+                    toast('❌ Las keywords son palabras, no números de teléfono', true);
+                    return;
+                }
+            }
+
             let label = null;
             if (!esKeyword) {
-                const l = prompt('Alias (opcional):', '');
+                const l = prompt('Alias (opcional):\n\nEjemplo: "Pizza Hut Centro", "Taquería El Güero"', '');
                 if (l && l.trim()) label = l.trim();
             }
+
             const r = await fetch('/api/zona/add', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -2072,6 +2154,8 @@
                 toast('✅ Añadido');
                 await cargarConfig();
                 await cargarLocalesYGrupos();
+            } else {
+                toast('❌ ' + (d.error || 'Error'), true);
             }
         }
 
@@ -2111,25 +2195,49 @@
             } catch (e) { toast('❌ El bot no responde.', true); }
         }
 
-        function abrirModalCopiar(valor) {
+        function abrirModalCopiar(valor, tipoOriginal) {
             modalCopiarValor = valor;
+            modalCopiarTipoOriginal = tipoOriginal;
             document.getElementById('modal-copiar-valor').textContent = valor;
             const selectZona = document.getElementById('modal-copiar-zona');
             selectZona.innerHTML = Object.entries(zonas).map(([key, z]) =>
                 `<option value="${key}">${escapeHtml(z.nombre)}</option>`
             ).join('');
+
+            const selectTipo = document.getElementById('modal-copiar-tipo');
+            if (esJidGrupo(valor)) {
+                selectTipo.value = tipoOriginal && tipoOriginal.includes('keyword') ? 'keyword_groups' : 'image_groups';
+            } else if (esNumeroLocal(valor)) {
+                selectTipo.value = tipoOriginal && tipoOriginal.includes('keyword') ? 'keyword_numbers' : 'image_numbers';
+            }
+
             document.getElementById('modal-copiar').classList.add('active');
         }
 
         function cerrarModalCopiar() {
             document.getElementById('modal-copiar').classList.remove('active');
             modalCopiarValor = null;
+            modalCopiarTipoOriginal = null;
         }
 
         async function confirmarCopiar() {
             if (!modalCopiarValor) return;
             const destinoKey = document.getElementById('modal-copiar-zona').value;
             const tipo = document.getElementById('modal-copiar-tipo').value;
+
+            if (tipo === 'image_groups' || tipo === 'keyword_groups') {
+                if (!esJidGrupo(modalCopiarValor)) {
+                    toast('❌ No puedes copiar un LOCAL a GRUPOS. Selecciona un apartado de LOCALES.', true);
+                    return;
+                }
+            }
+            if (tipo === 'image_numbers' || tipo === 'keyword_numbers') {
+                if (!esNumeroLocal(modalCopiarValor)) {
+                    toast('❌ No puedes copiar un GRUPO a LOCALES. Selecciona un apartado de GRUPOS.', true);
+                    return;
+                }
+            }
+
             const r = await fetch('/api/zona/copiar', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
@@ -2141,6 +2249,8 @@
                 cerrarModalCopiar();
                 await cargarConfig();
                 await cargarLocalesYGrupos();
+            } else {
+                toast('❌ ' + (d.error || 'Error'), true);
             }
         }
 
@@ -2376,6 +2486,8 @@
                 await cargarDetectados();
                 await cargarConfig();
                 await cargarLocalesYGrupos();
+            } else {
+                toast('❌ ' + (d.error || 'Error'), true);
             }
         }
 
