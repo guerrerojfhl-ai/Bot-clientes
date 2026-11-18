@@ -1255,6 +1255,10 @@
                 const d = await r.json();
                 fallosConsecutivos = 0;
                 if (avisoBotActivo) ocultarAvisoBot();
+
+                // 🔒 Declarar ANTES de usarse en cualquier bloque
+                const requiereVinculacion = d.requiereVinculacionManual === true;
+
                 const el = document.getElementById('estado-conexion');
                 el.textContent = d.conectado ? '● CONECTADO' : '● DESCONECTADO';
                 el.className = 'status ' + (d.conectado ? 'on' : 'off');
@@ -1297,9 +1301,6 @@
                 const li = d.licencia;
                 const licInfo = document.getElementById('licencia-info');
                 const avisoSesion = document.getElementById('aviso-y-health');
-
-                // 🔒 PROTECCIÓN DE SESIÓN: detectar si requiere vinculación manual
-                const requiereVinculacion = d.requiereVinculacionManual === true;
 
                 if (li && li.valida) {
                     licInfo.textContent = '✅ Licencia VÁLIDA';
