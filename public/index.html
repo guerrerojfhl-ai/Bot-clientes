@@ -1263,7 +1263,9 @@
                 const avisoY = document.getElementById('aviso-y-health');
                 if (avisoY) {
                     const yh = d.yHealth;
-                    if (yh && !yh.ok) {
+                    // 🔒 Si la sesión requiere vinculación manual, NO mostrar el aviso de "Y no se envía"
+                    // porque el aviso de sesión ya explica la causa raíz.
+                    if (yh && !yh.ok && !requiereVinculacion) {
                         const hace = yh.lastFailureTimestamp
                             ? Math.floor((Date.now() - yh.lastFailureTimestamp) / 1000)
                             : null;
@@ -1294,15 +1296,41 @@
 
                 const li = d.licencia;
                 const licInfo = document.getElementById('licencia-info');
+                const avisoSesion = document.getElementById('aviso-y-health');
+
+                // 🔒 PROTECCIÓN DE SESIÓN: detectar si requiere vinculación manual
+                const requiereVinculacion = d.requiereVinculacionManual === true;
+
                 if (li && li.valida) {
                     licInfo.textContent = '✅ Licencia VÁLIDA';
                     licInfo.className = 'info ok';
+                } else if (requiereVinculacion) {
+                    licInfo.innerHTML = '⚠️ <b>Sesión inválida — requiere vinculación manual</b>';
+                    licInfo.className = 'info warn';
                 } else {
                     licInfo.textContent = '❌ ' + (li?.razon || 'SIN LICENCIA');
                     licInfo.className = 'info warn';
                 }
                 document.getElementById('licencia-detalle').textContent =
                     li?.valida ? `Autorizada para: ${d.numeroConectado}` : (li?.razon || '--');
+
+                // 🔒 Mostrar aviso prominente si la sesión requiere vinculación manual
+                if (requiereVinculacion && avisoSesion) {
+                    avisoSesion.style.display = 'block';
+                    avisoSesion.innerHTML = `
+                        <div style="background:linear-gradient(135deg,#f59e0b,#d97706); color:#000; padding:14px 16px; border-radius:12px; font-weight:600; box-shadow:0 6px 20px rgba(245,158,11,0.4);">
+                            <div style="font-size:15px;margin-bottom:4px;">🔐 La sesión de WhatsApp ha expirado o fue revocada</div>
+                            <div style="font-size:12px;font-weight:400;opacity:0.9;">
+                                El bot no se reconectará automáticamente para no corromper más la sesión.<br>
+                                <b>Para revincular:</b> ve a <b>"Configurar Teléfono"</b> abajo, haz clic en <b>"Guardar y Reiniciar Bot (borra sesión)"</b> y espera el nuevo código.
+                            </div>
+                        </div>
+                    `;
+                } else if (avisoSesion && avisoSesion.innerHTML.includes('La sesión de WhatsApp ha expirado')) {
+                    // Limpiar el aviso de sesión cuando ya no aplica
+                    avisoSesion.style.display = 'none';
+                    avisoSesion.innerHTML = '';
+                }
 
                 const pairingCard = document.getElementById('pairing-card');
                 const pairingCodeEl = document.getElementById('pairing-code');
@@ -1314,13 +1342,21 @@
                         pairingCard.style.display = 'block';
                         pairingCodeEl.textContent = d.pairingCode;
                         if (pairingInfoEl) {
-                            pairingInfoEl.textContent = 'Abre WhatsApp → Ajustes → Dispositivos vinculados → Vincular con número de teléfono, e ingresa este código:';
+                            if (requiereVinculacion) {
+                                pairingInfoEl.innerHTML = '<b style="color:#f59e0b;">⚠️ La sesión anterior expiró. Ingresa este nuevo código en WhatsApp.</b>';
+                            } else {
+                                pairingInfoEl.textContent = 'Abre WhatsApp → Ajustes → Dispositivos vinculados → Vincular con número de teléfono, e ingresa este código:';
+                            }
                         }
                     } else if (d.telefonoConfigurado) {
                         pairingCard.style.display = 'block';
                         pairingCodeEl.textContent = '····';
                         if (pairingInfoEl) {
-                            pairingInfoEl.textContent = '⏳ Esperando que el bot genere el código... (espera 10-15s)';
+                            if (requiereVinculacion) {
+                                pairingInfoEl.innerHTML = '<b style="color:#f59e0b;">⚠️ La sesión expiró. Ve a "Configurar Teléfono" abajo y haz clic en "Guardar y Reiniciar Bot" para generar un nuevo código.</b>';
+                            } else {
+                                pairingInfoEl.textContent = '⏳ Esperando que el bot genere el código... (espera 10-15s)';
+                            }
                         }
                     } else {
                         pairingCard.style.display = 'none';
